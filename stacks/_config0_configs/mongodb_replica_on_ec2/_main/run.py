@@ -132,13 +132,13 @@ class Main(newSchedStack):
                                 default="xfs")
 
         # Add substack
-        self.stack.add_substack('config0-hub:::ec2_ubuntu')
-        self.stack.add_substack('config0-hub:::create_mongodb_pem')
-        self.stack.add_substack('config0-hub:::create_mongodb_keyfile')
-        self.stack.add_substack('config0-hub:::mongodb_replica_ubuntu')
-        self.stack.add_substack('config0-hub:::delete_resource')
-        self.stack.add_substack('config0-hub:::new_ec2_ssh_key')
-        self.stack.add_substack('config0-hub:::config0-core::publish_resource')
+        self.stack.add_substack('config0-publish:::ec2_ubuntu')
+        self.stack.add_substack('config0-publish:::create_mongodb_pem')
+        self.stack.add_substack('config0-publish:::create_mongodb_keyfile')
+        self.stack.add_substack('config0-publish:::mongodb_replica_ubuntu')
+        self.stack.add_substack('config0-publish:::delete_resource')
+        self.stack.add_substack('config0-publish:::new_ec2_ssh_key')
+        self.stack.add_substack('config0-publish:::config0_core::publish_resource')
 
         self.stack.init_substacks()
 
