@@ -37,8 +37,9 @@ def _get_mongodb_hosts(stack):
     private_ips = []
     mongodb_hosts_info = []
 
-    _lookup = {"must_exists":True,"must_be_one":True}
-    _lookup["resource_type"] = "server"
+    _lookup = {"must_exists": True,
+               "must_be_one": True,
+               "resource_type": "server"}
 
     mongodb_hosts = stack.to_list(stack.mongodb_hosts)
 
@@ -100,14 +101,14 @@ def run(stackargs):
     stack.parse.add_optional(key="cloud_tags_hash",default='null')
 
     # Add execgroup
-    stack.add_substack("config0-publish:::ebs_volume_attach")
+    stack.add_substack("config0-hub:::ebs_volume_attach")
 
     # Add host group
-    stack.add_hostgroups("config0-publish:::ubuntu::18.04-docker","install_docker")
-    stack.add_hostgroups("config0-publish:::ansible::ubuntu-18.04","install_python")
-    stack.add_hostgroups("config0-publish:::aws_storage::config_vol","config_vol")
-    stack.add_hostgroups("config0-publish:::mongodb::ubuntu_vendor_setup","ubuntu_vendor_setup")
-    stack.add_hostgroups("config0-publish:::mongodb::ubuntu_vendor_init_replica","ubuntu_vendor_init_replica")
+    stack.add_hostgroups("config0-hub:::ubuntu::18.04-docker","install_docker")
+    stack.add_hostgroups("config0-hub:::ansible::ubuntu-18.04","install_python")
+    stack.add_hostgroups("config0-hub:::aws_storage::config_vol","config_vol")
+    stack.add_hostgroups("config0-hub:::mongodb::ubuntu_vendor_setup","ubuntu_vendor_setup")
+    stack.add_hostgroups("config0-hub:::mongodb::ubuntu_vendor_init_replica","ubuntu_vendor_init_replica")
 
     # Initialize 
     stack.init_variables()
@@ -158,17 +159,16 @@ def run(stackargs):
     # create and mount volumes
     for mongodb_host_info in mongodb_hosts_info:
 
-        overide_values = { "device_name":stack.device_name,
-                           "docker_exec_env":stack.terraform_docker_exec_env,
-                           "aws_default_region":stack.aws_default_region }
-
-        overide_values["volume_name"] = mongodb_host_info["volume_name"]
-        overide_values["hostname"] = mongodb_host_info["hostname"]
+        override_values = {"device_name": stack.device_name,
+                           "docker_exec_env": stack.terraform_docker_exec_env,
+                           "aws_default_region": stack.aws_default_region,
+                           "volume_name": mongodb_host_info["volume_name"],
+                           "hostname": mongodb_host_info["hostname"]}
 
         if stack.get_attr("cloud_tags_hash"):
             overide_values["cloud_tags_hash"] = stack.cloud_tags_hash
 
-        inputargs = {"overide_values": overide_values,
+        inputargs = {"overide_values": override_values,
                      "automation_phase": "infrastructure",
                      "human_description": 'Attaches ebs volume'}
 

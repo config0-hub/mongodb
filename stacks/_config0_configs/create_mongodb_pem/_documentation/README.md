@@ -1,9 +1,11 @@
 **Description**
 
-  - The stack creates the mongo pem needed for self signed SSl connection.
+ - This stack generates the MongoDB PEM file required for establishing a self-signed SSL connection.
 
 **Required**
 
-| argument      | description                            | var type | default      |
-| ------------- | -------------------------------------- | -------- | ------------ |
-| basename   | the basename for the mongodb self signed ssl pem file       | string   | None         |
+| argument      | description                                | var type | default      |
+| ------------- |--------------------------------------------| -------- | ------------ |
+| basename   | the basename for the mongodb hostname [^1] | string   | None         |
+
+[^1]: e.g. The basename for dev-mongodb-01, dev-mongodb-02, dev-mongodb-03 is: __dev-mongodb__

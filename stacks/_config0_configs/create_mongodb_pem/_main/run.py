@@ -9,20 +9,20 @@ def run(stackargs):
     stack.parse.add_required(key="basename")
 
     # Add shelloutconfig dependencies
-    stack.add_shelloutconfig('config0-publish:::mongodb::create_keys')
+    stack.add_shelloutconfig('config0-hub:::mongodb::create_keys')
 
     # Initialize 
     stack.init_variables()
     stack.init_shelloutconfigs()
 
-    # Create mongodb.pem for MongoDb SSL
-    env_vars = {"NAME":stack.basename}
-    env_vars["METHOD"] = "create_ssl"
+    env_vars = {"NAME": stack.basename,
+                "METHOD": "create_ssl"}
 
-    inputargs = {"display":True}
-    inputargs["human_description"] = 'Create mongodb.pem for MongoDb SSL'
-    inputargs["env_vars"] = json.dumps(env_vars)
-    inputargs["automation_phase"] = "infrastructure"
+    inputargs = {"display": True,
+                 "human_description": 'Create mongodb.pem for MongoDb SSL',
+                 "env_vars": json.dumps(env_vars),
+                 "automation_phase": "infrastructure"}
+
     stack.create_keys.resource_exec(**inputargs)
 
     return stack.get_results()

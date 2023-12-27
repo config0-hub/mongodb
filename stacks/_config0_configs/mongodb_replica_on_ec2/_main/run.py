@@ -4,8 +4,6 @@ class Main(newSchedStack):
 
         newSchedStack.__init__(self, stackargs)
 
-        # tags="sshkey,pem,keyfile,bastion,create,cleanup")
-
         # Add default variables
         self.parse.add_required(key="mongodb_cluster",
                                 types="str",
@@ -132,13 +130,13 @@ class Main(newSchedStack):
                                 default="xfs")
 
         # Add substack
-        self.stack.add_substack('config0-publish:::ec2_ubuntu')
-        self.stack.add_substack('config0-publish:::create_mongodb_pem')
-        self.stack.add_substack('config0-publish:::create_mongodb_keyfile')
-        self.stack.add_substack('config0-publish:::mongodb_replica_ubuntu')
-        self.stack.add_substack('config0-publish:::delete_resource')
-        self.stack.add_substack('config0-publish:::new_ec2_ssh_key')
-        self.stack.add_substack('config0-publish:::config0_core::publish_resource')
+        self.stack.add_substack('config0-hub:::ec2_ubuntu')
+        self.stack.add_substack('config0-hub:::create_mongodb_pem')
+        self.stack.add_substack('config0-hub:::create_mongodb_keyfile')
+        self.stack.add_substack('config0-hub:::mongodb_replica_ubuntu')
+        self.stack.add_substack('config0-hub:::delete_resource')
+        self.stack.add_substack('config0-hub:::new_ec2_ssh_key')
+        self.stack.add_substack('config0-hub:::config0-core::publish_resource')
 
         self.stack.init_substacks()
 
@@ -169,10 +167,9 @@ class Main(newSchedStack):
                       "clobber": True,
                       "aws_default_region": self.stack.aws_default_region }
 
-        inputargs = {"arguments": arguments}
-        inputargs["automation_phase"] = "infrastructure"
-        inputargs["human_description"] = 'Create and upload ssh key name {}'.format(
-            self.stack.ssh_key_name)
+        inputargs = {"arguments": arguments,
+                     "automation_phase": "infrastructure",
+                     "human_description": 'Create and upload ssh key name {}'.format(self.stack.ssh_key_name)}
 
         return self.stack.new_ec2_ssh_key.insert(display=True,
                                                  **inputargs)
@@ -234,9 +231,9 @@ class Main(newSchedStack):
         human_description = "Creating bastion config hostname {} on ec2".format(
             self.stack.bastion_hostname)
 
-        inputargs = {"arguments": arguments }
-        inputargs["automation_phase"] = "infrastructure"
-        inputargs["human_description"] = human_description
+        inputargs = {"arguments": arguments,
+                     "automation_phase": "infrastructure",
+                     "human_description": human_description}
 
         return self.stack.ec2_ubuntu.insert(display=True,
                                             **inputargs)
@@ -292,11 +289,6 @@ class Main(newSchedStack):
             arguments = self._get_create_arguments()
             arguments["hostname"] = hostname
             arguments["volume_name"] = volume_name  # ref 45304958324
-
-            # testtest333
-            self.stack.logger.debug("*"*32)
-            self.stack.logger.json(arguments)
-            self.stack.logger.debug("*"*32)
 
             inputargs = {"arguments": arguments,
                          "automation_phase":"infrastructure",

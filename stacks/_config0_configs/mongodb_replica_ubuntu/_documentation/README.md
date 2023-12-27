@@ -1,10 +1,12 @@
 **Description**
 
-  - The stack that creates a MongoDB using Virtual Machines through a basion host since the MongoDB is in a protected private network.
+  - This stack creates a Mongodb replica set using virtual machines (VMs) within a protected private network, utilizing a bastion host for access.
 
 **Infrastructure**
 
-  - expects ssh_key_name to be uploaded to Ec2
+  - Usually, this stack is invoked by an upstream stack like __config-publish:::mongodb_replica_on_ec2__.
+  - This stack assumes that the bastion hosts and Mongodb VMs have already been created and registered in the user's Config0 resource database.
+  - This stack assumes that the specified ssh_key_name has already been inserted into the VMs, typically by the cloud provider.
 
 **Required**
 
