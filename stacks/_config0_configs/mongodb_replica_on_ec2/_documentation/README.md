@@ -91,7 +91,7 @@ selectors:
        cloud: aws
 infrastructure:
    mongodb_replica:
-     stack_name: config0-hub:::mongodb_replica_on_ec2
+     stack_name: config0-publish:::mongodb_replica_on_ec2
      arguments:
         vpc_name: selector:::network_vars::vpc_name
         vpc_id: selector:::network_vars::vpc_id

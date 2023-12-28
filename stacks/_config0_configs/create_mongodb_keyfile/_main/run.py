@@ -9,7 +9,7 @@ def run(stackargs):
     stack.parse.add_required(key="basename")
 
     # Add shelloutconfig dependencies
-    stack.add_shelloutconfig('config0-hub:::mongodb::create_keys')
+    stack.add_shelloutconfig('config0-publish:::mongodb::create_keys')
 
     # Initialize 
     stack.init_variables()
