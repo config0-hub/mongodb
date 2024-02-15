@@ -136,7 +136,7 @@ class Main(newSchedStack):
         self.stack.add_substack('config0-publish:::mongodb_replica_ubuntu')
         self.stack.add_substack('config0-publish:::delete_resource')
         self.stack.add_substack('config0-publish:::new_ec2_ssh_key')
-        self.stack.add_substack('config0-publish:::config0_core::publish_resource')
+        self.stack.add_substack('config0-publish:::config0_core::output_resource_to_ui')
 
         self.stack.init_substacks()
 
@@ -363,8 +363,8 @@ class Main(newSchedStack):
                      "automation_phase":"infrastructure",
                      "human_description": human_description }
 
-        return self.stack.publish_resource.insert(display=True,
-                                                  **inputargs)
+        return self.stack.output_resource_to_ui.insert(display=True,
+                                                       **inputargs)
 
     def run(self):
 
