@@ -367,13 +367,22 @@ class Main(newSchedStack):
 
     def run(self):
 
+        # testtest456
+        self.stack.logger.debug('a'*32)
         self.stack.unset_parallel(sched_init=True)()
+        self.stack.logger.debug('b'*32)
         self.add_job("sshkey")
+        self.stack.logger.debug('c'*32)
         self.add_job("pem")
+        self.stack.logger.debug('d'*32)
         self.add_job("keyfile")
+        self.stack.logger.debug('e'*32)
         self.add_job("bastion")
+        self.stack.logger.debug('f'*32)
         self.add_job("create")
+        self.stack.logger.debug('g'*32)
         self.add_job("cleanup")
+        self.stack.logger.debug('h'*32)
 
         return self.finalize_jobs()
 
