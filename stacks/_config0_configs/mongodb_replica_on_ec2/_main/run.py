@@ -367,7 +367,7 @@ class Main(newSchedStack):
 
     def run(self):
 
-        self.stack.unset_parallel()
+        self.stack.unset_parallel(sched_init=True)()
         self.add_job("sshkey")
         self.add_job("pem")
         self.add_job("keyfile")
