@@ -369,7 +369,7 @@ class Main(newSchedStack):
 
         # testtest456
         self.stack.logger.debug('a'*32)
-        self.stack.unset_parallel(sched_init=True)()
+        self.stack.unset_parallel(sched_init=True)
         self.stack.logger.debug('b'*32)
         self.add_job("sshkey")
         self.stack.logger.debug('c'*32)
