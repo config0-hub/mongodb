@@ -1,0 +1,17 @@
+desc: Creates a MongoDB through a basion host.
+release: 0.0.1
+categories: 
+   - database
+   - mongodb
+   - replica
+   - ansible
+   - bastion
+tags:
+   - bastion
+   - ansible
+   - mongodb
+   - replica
+   - vms
+   - database
+   - cloud
+   - public_cloud
