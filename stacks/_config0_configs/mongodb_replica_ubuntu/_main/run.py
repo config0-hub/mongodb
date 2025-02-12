@@ -137,10 +137,10 @@ def run(stackargs):
     stack.add_substack("config0-publish:::ebs_volume_attach")
 
     # Add host group
-    stack.add_hostgroups("config0-publish:::ubuntu::18.04-docker",
+    stack.add_hostgroups("config0-publish:::ubuntu::docker",
                          "install_docker")
 
-    stack.add_hostgroups("config0-publish:::ansible::ubuntu-18.04",
+    stack.add_hostgroups("config0-publish:::ansible::ubuntu",
                          "install_python")
 
     stack.add_hostgroups("config0-publish:::aws_storage::config_vol",

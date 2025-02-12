@@ -1,8 +1,0 @@
----
-# tasks file for mongoDB setup
-
-- name: install mongoDB
-  apt: 
-    name: mongodb
-    state: present
-    update_cache: yes

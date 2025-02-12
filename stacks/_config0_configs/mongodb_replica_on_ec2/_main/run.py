@@ -45,16 +45,6 @@ class Main(newSchedStack):
                                 tags="mongo_replica",
                                 default="4.2")
 
-        # spot request
-        self.parse.add_optional(key="spot",
-                                default="null")
-
-        self.parse.add_optional(key="spot_max_price",
-                                default="null")
-
-        self.parse.add_optional(key="spot_type",
-                                default="persistent")
-
         self.parse.add_required(key="bastion_sg_id",
                                 default="null")
 
@@ -223,13 +213,6 @@ class Main(newSchedStack):
         human_description = "Creating bastion config hostname {} on ec2".format(
             self.stack.bastion_hostname)
 
-        # spot request
-        if self.stack.get_attr("spot"):
-            arguments["spot"] = True
-            arguments["spot_type"] = self.stack.spot_type
-            if self.stack.get_attr("spot_max_price"):
-                arguments["spot_max_price"] = self.stack.spot_max_price
-
         inputargs = {"arguments": arguments,
                      "automation_phase": "infrastructure",
                      "human_description": human_description}
@@ -251,11 +234,6 @@ class Main(newSchedStack):
         elif self.stack.get_attr("ami_filter") and self.stack.get_attr("ami_owner"):
             arguments["ami_filter"] = self.stack.ami_filter
             arguments["ami_owner"] = self.stack.ami_owner
-
-        if self.stack.get_attr("spot"):
-            arguments["spot"] = True
-            arguments["spot_type"] = self.stack.spot_type
-            arguments["spot_max_price"] = self.stack.spot_max_price
 
         return arguments
 
@@ -343,7 +321,6 @@ class Main(newSchedStack):
 
         # publish the info
         keys_to_publish = ["region",
-                           "spot_req_id",
                            "name",
                            "private_ip",
                            "public_ip",
