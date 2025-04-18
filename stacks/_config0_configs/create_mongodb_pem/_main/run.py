@@ -16,10 +16,10 @@
 """
 
 def run(stackargs):
-
+    """Create MongoDB SSL keys."""
     import json
 
-    # instantiate authoring stack
+    # Instantiate authoring stack
     stack = newStack(stackargs)
 
     # Add default variables
@@ -32,13 +32,17 @@ def run(stackargs):
     stack.init_variables()
     stack.init_shelloutconfigs()
 
-    env_vars = {"NAME": stack.basename,
-                "METHOD": "create_ssl"}
+    env_vars = {
+        "NAME": stack.basename,
+        "METHOD": "create_ssl"
+    }
 
-    inputargs = {"display": True,
-                 "human_description": 'Create mongodb.pem for MongoDb SSL',
-                 "env_vars": json.dumps(env_vars),
-                 "automation_phase": "infrastructure"}
+    inputargs = {
+        "display": True,
+        "human_description": 'Create mongodb.pem for MongoDB SSL',
+        "env_vars": json.dumps(env_vars),
+        "automation_phase": "infrastructure"
+    }
 
     stack.create_keys.resource_exec(**inputargs)
 

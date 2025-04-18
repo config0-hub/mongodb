@@ -7,13 +7,13 @@ This stack automates the deployment of a MongoDB replica set cluster on AWS. It 
 
 ### Required Variables
 
-| Name | Description |
-|------|-------------|
-| bastion_hostname | Bastion host name |
-| mongodb_hosts | Host names for MongoDB servers |
-| mongodb_cluster | MongoDB cluster name |
-| ssh_key_name | Name label for SSH key |
-| aws_default_region | Default AWS region |
+| Name | Description | Default |
+|------|-------------|---------|
+| bastion_hostname | Bastion host name | &nbsp; |
+| mongodb_hosts | Host names for MongoDB servers | &nbsp; |
+| mongodb_cluster | MongoDB cluster name | &nbsp; |
+| ssh_key_name | Name label for SSH key | &nbsp; |
+| aws_default_region | Default AWS region | &nbsp; |
 
 ### Optional Variables
 
@@ -29,7 +29,7 @@ This stack automates the deployment of a MongoDB replica set cluster on AWS. It 
 | mongodb_bind_ip | MongoDB bind IP address | "0.0.0.0" |
 | mongodb_logpath | MongoDB log file path | "/var/log/mongodb/mongod.log" |
 | publish_creds | Configuration for publish creds | "true" |
-| publish_to_saas | boolean to publish values to config0 SaaS UI | "null" |
+| publish_to_saas | Boolean to publish values to config0 SaaS UI | "null" |
 | volume_mountpoint | Volume mount path | "/var/lib/mongodb" |
 | volume_fstype | Volume filesystem type | "xfs" |
 | device_name | Configuration for device name | "/dev/xvdc" |
@@ -37,29 +37,27 @@ This stack automates the deployment of a MongoDB replica set cluster on AWS. It 
 | ansible_docker_image | Ansible container image | "config0/ansible-run-env" |
 | cloud_tags_hash | Resource tags for cloud provider | "null" |
 
-## Features
-- Automated MongoDB cluster deployment
-- EBS volume attachment and configuration
-- SSL/TLS security setup
-- Replica set initialization
-- Secure replication with keyfile authentication
-- Publishing cluster information to Config0 SaaS
-
 ## Dependencies
 
 ### Substacks
-- [config0-publish:::ebs_volume_attach](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/ebs_volume_attach)
+- [config0-publish:::ebs_volume_attach](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/stacks/config0-publish/ebs_volume_attach/default)
 
 ### Execgroups
-- [config0-publish:::ubuntu::docker](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-publish/ubuntu/docker)
-- [config0-publish:::ansible::ubuntu](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-publish/ansible/ubuntu)
-- [config0-publish:::aws_storage::config_vol](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-publish/aws_storage/config_vol)
-- [config0-publish:::mongodb::ubuntu_vendor_setup](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-publish/mongodb/ubuntu_vendor_setup)
-- [config0-publish:::mongodb::ubuntu_vendor_init_replica](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-publish/mongodb/ubuntu_vendor_init_replica)
+- [config0-publish:::ubuntu::docker](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/exec/groups/config0-publish/ubuntu/docker/default)
+- [config0-publish:::ansible::ubuntu](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/exec/groups/config0-publish/ansible/ubuntu/default)
+- [config0-publish:::aws_storage::config_vol](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/exec/groups/config0-publish/aws_storage/config_vol/default)
+- [config0-publish:::mongodb::ubuntu_vendor_setup](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/exec/groups/config0-publish/mongodb/ubuntu_vendor_setup/default)
+- [config0-publish:::mongodb::ubuntu_vendor_init_replica](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/exec/groups/config0-publish/mongodb/ubuntu_vendor_init_replica/default)
+
+### Shelloutconfigs
+- [config0-publish:::terraform::resource_wrapper](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/shelloutconfigs/config0-publish/terraform/resource_wrapper/default)
+- [config0-publish:::github::lambda_trigger_stepf](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/shelloutconfigs/config0-publish/github/lambda_trigger_stepf/default)
 
 ## License
+<pre>
 Copyright (C) 2025 Gary Leong <gary@config0.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, version 3 of the License.
+</pre>

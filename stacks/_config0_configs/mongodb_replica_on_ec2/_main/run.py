@@ -148,71 +148,68 @@ class Main(newSchedStack):
         self.stack.init_substacks()
 
     def _set_bastion_hostname(self):
-
         self.stack.set_variable("bastion_hostname",
                                 f"{self.stack.hostname_base}-config",
                                 tags="mongo_replica")
 
     def _set_hostname_base(self):
-
         self.stack.set_variable("hostname_base",
                                 f"{self.stack.mongodb_cluster}-replica")
 
     def _set_ssh_key_name(self):
-
         self.stack.set_variable("ssh_key_name",
                                 f"{self.stack.mongodb_cluster}-ssh-key",
                                 tags="bastion,create_vm,mongo_replica",
                                 types="str")
 
     def run_sshkey(self):
-
         self.stack.init_variables()
         self._set_ssh_key_name()
 
-        arguments = {"key_name": self.stack.ssh_key_name, 
-                     "clobber": True,
-                     "aws_default_region": self.stack.aws_default_region}
+        arguments = {
+            "key_name": self.stack.ssh_key_name,
+            "clobber": True,
+            "aws_default_region": self.stack.aws_default_region
+        }
 
-        inputargs = {"arguments": arguments,
-                     "automation_phase": "infrastructure",
-                     "human_description": f'Create and upload ssh key name {self.stack.ssh_key_name}'}
+        inputargs = {
+            "arguments": arguments,
+            "automation_phase": "infrastructure",
+            "human_description": f'Create and upload ssh key name {self.stack.ssh_key_name}'
+        }
 
-        return self.stack.new_ec2_ssh_key.insert(display=True,
-                                                 **inputargs)
+        return self.stack.new_ec2_ssh_key.insert(display=True, **inputargs)
 
     def run_pem(self):
-
         self.stack.init_variables()
 
-        inputargs = {"arguments": {
-            "basename": self.stack.mongodb_cluster}
+        inputargs = {
+            "arguments": {
+                "basename": self.stack.mongodb_cluster
+            }
         }
 
-        return self.stack.create_mongodb_pem.insert(display=True,
-                                                    **inputargs)
+        return self.stack.create_mongodb_pem.insert(display=True, **inputargs)
 
     def run_keyfile(self):
-
         self.stack.init_variables()
 
-        inputargs = {"arguments": {
-            "basename": self.stack.mongodb_cluster}
+        inputargs = {
+            "arguments": {
+                "basename": self.stack.mongodb_cluster
+            }
         }
 
-        return self.stack.create_mongodb_keyfile.insert(display=True,
-                                                        **inputargs)
+        return self.stack.create_mongodb_keyfile.insert(display=True, **inputargs)
 
     def run_bastion(self):
-
         self.stack.init_variables()
 
         self._set_hostname_base()
         self._set_bastion_hostname()
         self._set_ssh_key_name()
         
-        arguments = self.stack.get_tagged_vars(tag="bastion",
-                                               output="dict")
+        arguments = self.stack.get_tagged_vars(tag="bastion", output="dict")
 
         arguments["size"] = self.stack.instance_type
         arguments["hostname"] = self.stack.bastion_hostname
@@ -229,17 +226,16 @@ class Main(newSchedStack):
 
         human_description = f"Creating bastion config hostname {self.stack.bastion_hostname} on ec2"
 
-        inputargs = {"arguments": arguments,
-                     "automation_phase": "infrastructure",
-                     "human_description": human_description}
+        inputargs = {
+            "arguments": arguments,
+            "automation_phase": "infrastructure",
+            "human_description": human_description
+        }
 
-        return self.stack.ec2_ubuntu.insert(display=True,
-                                            **inputargs)
+        return self.stack.ec2_ubuntu.insert(display=True, **inputargs)
 
     def _get_create_arguments(self):
-
-        arguments = self.stack.get_tagged_vars(tag="create_vm",
-                                               output="dict")
+        arguments = self.stack.get_tagged_vars(tag="create_vm", output="dict")
 
         arguments["size"] = self.stack.instance_type
         arguments["bootstrap_for_exec"] = None
@@ -254,7 +250,6 @@ class Main(newSchedStack):
         return arguments
 
     def run_create(self):
-
         self.stack.init_variables()
 
         self._set_hostname_base()
@@ -268,11 +263,8 @@ class Main(newSchedStack):
 
         # Create mongodb ec2 instances
         for num in range(int(self.stack.num_of_replicas)):
-
             hostname = f"{self.stack.hostname_base}-num-{num}".replace("_", "-")
-
             human_description = f"Creating hostname {hostname} on ec2"
-
             volume_name = f"{hostname}-{self.stack.volume_mountpoint}".replace("/", "-").replace(".", "-")
 
             mongodb_hosts.append(hostname)
@@ -281,21 +273,20 @@ class Main(newSchedStack):
             arguments["hostname"] = hostname
             arguments["volume_name"] = volume_name  # ref 45304958324
 
-            inputargs = {"arguments": arguments,
-                         "automation_phase": "infrastructure",
-                         "human_description": human_description}
+            inputargs = {
+                "arguments": arguments,
+                "automation_phase": "infrastructure",
+                "human_description": human_description
+            }
 
-            self.stack.ec2_ubuntu.insert(display=True, 
-                                         **inputargs)
+            self.stack.ec2_ubuntu.insert(display=True, **inputargs)
 
         # configure in sequence
         self.stack.unset_parallel(wait_all=True)
 
         # provide the mongodb_hosts and begin installing
         # the mongo specific package and replication
-        arguments = self.stack.get_tagged_vars(tag="mongo_replica",
-                                               output="dict")
-
+        arguments = self.stack.get_tagged_vars(tag="mongo_replica", output="dict")
         arguments["mongodb_hosts"] = mongodb_hosts
 
         if self.stack.get_attr("publish_to_saas"):
@@ -303,15 +294,15 @@ class Main(newSchedStack):
 
         human_description = "Initialing Ubuntu specific actions mongodb_username and mongodb_password"
 
-        inputargs = {"arguments": arguments,
-                     "automation_phase": "infrastructure",
-                     "human_description": human_description}
+        inputargs = {
+            "arguments": arguments,
+            "automation_phase": "infrastructure",
+            "human_description": human_description
+        }
 
-        return self.stack.mongodb_replica_ubuntu.insert(display=True,
-                                                        **inputargs)
+        return self.stack.mongodb_replica_ubuntu.insert(display=True, **inputargs)
 
     def run_cleanup(self):
-
         self.stack.init_variables()
 
         self._set_hostname_base()
@@ -325,22 +316,25 @@ class Main(newSchedStack):
 
             human_description = f"Destroying bastion config hostname {self.stack.bastion_hostname} on ec2"
 
-            inputargs = {"arguments": arguments,
-                         "automation_phase": "infrastructure",
-                         "human_description": human_description}
+            inputargs = {
+                "arguments": arguments,
+                "automation_phase": "infrastructure",
+                "human_description": human_description
+            }
 
-            return self.stack.delete_resource.insert(display=True,
-                                                     **inputargs)
+            return self.stack.delete_resource.insert(display=True, **inputargs)
 
         # publish the info
-        keys_to_publish = ["region",
-                           "name",
-                           "private_ip",
-                           "public_ip",
-                           "instance_id",
-                           "ami",
-                           "availability_zone",
-                           "aws_default_region"]
+        keys_to_publish = [
+            "region",
+            "name",
+            "private_ip",
+            "public_ip",
+            "instance_id",
+            "ami",
+            "availability_zone",
+            "aws_default_region"
+        ]
 
         human_description = f'Publish resource info for {self.stack.bastion_hostname}'
 
@@ -348,15 +342,15 @@ class Main(newSchedStack):
         arguments["name"] = self.stack.bastion_hostname
         arguments["publish_keys_hash"] = self.stack.b64_encode(keys_to_publish)
 
-        inputargs = {"arguments": arguments,
-                     "automation_phase": "infrastructure",
-                     "human_description": human_description}
+        inputargs = {
+            "arguments": arguments,
+            "automation_phase": "infrastructure",
+            "human_description": human_description
+        }
 
-        return self.stack.output_resource_to_ui.insert(display=True,
-                                                       **inputargs)
+        return self.stack.output_resource_to_ui.insert(display=True, **inputargs)
 
     def run(self):
-
         self.stack.unset_parallel(sched_init=True)
         self.add_job("sshkey")
         self.add_job("pem")
@@ -368,7 +362,6 @@ class Main(newSchedStack):
         return self.finalize_jobs()
 
     def schedule(self):
-
         sched = self.new_schedule()
         sched.job = "sshkey"
         sched.archive.timeout = 1800

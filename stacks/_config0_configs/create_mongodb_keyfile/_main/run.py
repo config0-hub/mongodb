@@ -32,13 +32,17 @@ def run(stackargs):
     stack.init_variables()
     stack.init_shelloutconfigs()
 
-    env_vars = {"NAME": stack.basename,
-                "METHOD": "create"}
+    env_vars = {
+        "NAME": stack.basename,
+        "METHOD": "create"
+    }
 
-    inputargs = {"display": True,
-                 "human_description": 'Create mongodb_keyfile for MongoDb replication',
-                 "env_vars": json.dumps(env_vars),
-                 "automation_phase": "infrastructure"}
+    inputargs = {
+        "display": True,
+        "human_description": 'Create mongodb_keyfile for MongoDb replication',
+        "env_vars": json.dumps(env_vars),
+        "automation_phase": "infrastructure"
+    }
 
     stack.create_keys.resource_exec(**inputargs)
 
