@@ -110,7 +110,7 @@ def run(stackargs):
     stack.parse.add_optional(key="volume_mountpoint", default="/var/lib/mongodb")
     stack.parse.add_optional(key="volume_fstype", default="xfs")
     stack.parse.add_optional(key="device_name", default="/dev/xvdc")
-    stack.parse.add_optional(key="tf_runtime", default="tofu:1.6.2")
+    stack.parse.add_optional(key="tf_runtime", default="tofu:1.9.1")
     stack.parse.add_optional(key="ansible_docker_image", default="config0/ansible-run-env")
     stack.parse.add_optional(key="cloud_tags_hash", default='null')
 

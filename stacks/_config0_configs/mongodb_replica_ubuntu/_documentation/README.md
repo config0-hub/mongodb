@@ -33,7 +33,7 @@ This stack automates the deployment of a MongoDB replica set cluster on AWS. It 
 | volume_mountpoint | Volume mount path | "/var/lib/mongodb" |
 | volume_fstype | Volume filesystem type | "xfs" |
 | device_name | Configuration for device name | "/dev/xvdc" |
-| tf_runtime | Terraform runtime version | "tofu:1.6.2" |
+| tf_runtime | Terraform runtime version | "tofu:1.9.1" |
 | ansible_docker_image | Ansible container image | "config0/ansible-run-env" |
 | cloud_tags_hash | Resource tags for cloud provider | "null" |
 
