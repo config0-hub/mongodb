@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import os
 import sys
 
+from config0_publisher.serialization import b64_decode
 from config0_publisher.loggerly import Config0Logger
 from config0_publisher.resource.manage import ResourceCmdHelper
 
@@ -89,6 +90,37 @@ class Main(ResourceCmdHelper):
         self.config_file_path = f"{self.exec_dir}/hosts"
         self.config_file = open(self.config_file_path, "w")
 
+    # dup 46362
+    def _write_key_to_file(self, key, filepath, permission=0o400):
+        """
+        Write a base64-encoded value from inputargs to a file with specified permissions.
+
+        Args:
+            key: The key to look up in self.inputargs
+            filepath: The path where the file should be written
+            permission: File permissions to set (default: 0o400, read-only for owner)
+
+        Returns:
+            The filepath if successful, None otherwise
+        """
+        # Return early if the key doesn't exist or has no value
+        if not self.inputargs.get(key):
+            return None
+
+        # Decode the base64 value
+        decoded_content = b64_decode(self.inputargs[key])
+
+        # Write the content directly to the file
+        with open(filepath, "w") as output_file:
+            output_file.write(decoded_content)
+
+        # Set file permissions and copy to shared location
+        os.chmod(filepath, permission)
+        self.copy_file_to_share(filepath)
+
+        return filepath
+
+
     def _create_mongodb_keyfile(self):
         """
         Create the MongoDB keyfile for authentication.
@@ -103,13 +135,10 @@ class Main(ResourceCmdHelper):
             "mongodb_keyfile"
         )
 
-        self.write_key_to_file(
+        self._write_key_to_file(
             key="mongodb_keyfile",
             filepath=filepath,
-            split_char="return",
-            deserialize=True,
-            add_return=True,
-            permission=400
+            permission=0o400
         )
 
     def _create_mongodb_pem(self):
@@ -126,13 +155,10 @@ class Main(ResourceCmdHelper):
             "mongodb.pem"
         )
 
-        self.write_key_to_file(
+        self._write_key_to_file(
             key="mongodb_pem",
             filepath=filepath,
-            split_char="return",
-            deserialize=True,
-            add_return=True,
-            permission=400
+            permission=0o400
         )
 
     def _add_public(self):
