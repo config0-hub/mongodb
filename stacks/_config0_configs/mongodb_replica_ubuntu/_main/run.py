@@ -142,9 +142,6 @@ def run(stackargs):
     # collect mongodb_hosts info
     mongodb_hosts_info, public_ips, private_ips = _get_mongodb_hosts(stack)
 
-    # testtest456
-    print(f'private_ips {private_ips}')
-
     # install docker on bastion hosts
     inputargs = {
         "display": True,
