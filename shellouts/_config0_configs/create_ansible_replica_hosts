@@ -38,9 +38,7 @@ class Main(ResourceCmdHelper):
     """
 
     def __init__(self):
-        """
-        Initialize the MongoDB Ansible Helper.
-        """
+        """Initialize the MongoDB Ansible Helper."""
         ResourceCmdHelper.__init__(
             self,
             app_name="ansible",
@@ -82,15 +80,10 @@ class Main(ResourceCmdHelper):
             self.main_private_ip = self.private_ips[0]
             self.logger.warn(f"ANS_VAR_/mongodb_main_ips not set: {e}")
 
-        if len(self.private_ips) > 1:
-            self.private_secondaries = self.private_ips[1:]
-        else:
-            self.private_secondaries = None
-
+        self.private_secondaries = self.private_ips[1:] if len(self.private_ips) > 1 else None
         self.config_file_path = f"{self.exec_dir}/hosts"
         self.config_file = open(self.config_file_path, "w")
 
-    # dup 46362
     def _write_key_to_file(self, key, filepath, permission=0o400):
         """
         Write a base64-encoded value from inputargs to a file with specified permissions.
@@ -107,10 +100,8 @@ class Main(ResourceCmdHelper):
         if not self.inputargs.get(key):
             return None
 
-        # Decode the base64 value
+        # Decode the base64 value and write to file
         decoded_content = b64_decode(self.inputargs[key])
-
-        # Write the content directly to the file
         with open(filepath, "w") as output_file:
             output_file.write(decoded_content)
 
@@ -119,7 +110,6 @@ class Main(ResourceCmdHelper):
         self.copy_file_to_share(filepath)
 
         return filepath
-
 
     def _create_mongodb_keyfile(self):
         """
@@ -162,53 +152,33 @@ class Main(ResourceCmdHelper):
         )
 
     def _add_public(self):
-        """
-        Add public IPs to the Ansible hosts file.
-        
-        Creates the [public] section with the list of public IPs.
-        """
+        """Add public IPs to the Ansible hosts file."""
         self.config_file.write('[public]\n')
-        for _ip in self.public_ips:
-            self.config_file.write(f"{_ip}\n")
+        for ip in self.public_ips:
+            self.config_file.write(f"{ip}\n")
         self.config_file.write("\n")
 
     def _add_private(self):
-        """
-        Add private IPs to the Ansible hosts file.
-        
-        Creates the [private] section with the list of private IPs.
-        """
+        """Add private IPs to the Ansible hosts file."""
         self.config_file.write('[private]\n')
-        for _ip in self.private_ips:
-            self.config_file.write(f"{_ip}\n")
+        for ip in self.private_ips:
+            self.config_file.write(f"{ip}\n")
         self.config_file.write("\n")
 
     def _add_config_ips(self):
-        """
-        Add configuration IPs to the Ansible hosts file.
-        
-        Creates the [configuration] section with the list of configuration IPs.
-        """
+        """Add configuration IPs to the Ansible hosts file."""
         self.config_file.write('[configuration]\n')
-        for _ip in self.config_ips:
-            self.config_file.write(f"{_ip}\n")
+        for ip in self.config_ips:
+            self.config_file.write(f"{ip}\n")
         self.config_file.write("\n")
 
     def _add_config_network(self):
-        """
-        Add configuration network to the Ansible hosts file.
-        
-        Creates the [config_network] section with the configuration network.
-        """
+        """Add configuration network to the Ansible hosts file."""
         self.config_file.write('[config_network]\n')
         self.config_file.write(f"{self.config_network}\n\n")
 
     def _add_main(self):
-        """
-        Add main replica node IPs to the Ansible hosts file.
-        
-        Creates the [public_main] and [private_main] sections with the main node's IPs.
-        """
+        """Add main replica node IPs to the Ansible hosts file."""
         self.config_file.write('[public_main]\n')
         self.config_file.write(f"{self.main_public_ip}\n\n")
         
@@ -216,49 +186,21 @@ class Main(ResourceCmdHelper):
         self.config_file.write(f"{self.main_private_ip}\n\n")
 
     def _add_secondaries(self):
-        """
-        Add secondary replica node IPs to the Ansible hosts file.
-        
-        Creates the [private-secondaries] section with the secondary nodes' IPs.
-        Returns early if there are no secondary nodes.
-        """
+        """Add secondary replica node IPs to the Ansible hosts file."""
         if not self.private_secondaries:
             return
 
         self.config_file.write('[private-secondaries]\n')
-        for _ip in self.private_secondaries:
-            self.config_file.write(f"{_ip}\n")
+        for ip in self.private_secondaries:
+            self.config_file.write(f"{ip}\n")
         self.config_file.write("\n")
 
     def create(self):
         """
         Create the complete Ansible host configuration.
         
-        Generates the full Ansible hosts file with all necessary sections:
-        - public IPs
-        - private IPs
-        - configuration IPs
-        - configuration network
-        - main node IPs
-        - secondary node IPs
-        
-        Also creates necessary MongoDB keyfile and certificate.
-        
-        Example hosts file structure:
-        [public]
-        13.212.156.196
-        13.212.111.66
-        13.229.147.37
-        
-        [public_main]
-        13.212.156.196
-        
-        [private-main]
-        172.31.5.4
-        
-        [private-secondaries]
-        172.31.10.21
-        172.31.1.231
+        Generates the full Ansible hosts file with all necessary sections and
+        creates MongoDB keyfile and certificate.
         """
         self._set_vars()
 
@@ -278,15 +220,11 @@ class Main(ResourceCmdHelper):
         self._add_secondaries()
         
         self.config_file.close()
-        self.logger.debug("Created Ansible host config file %s", self.config_file_path)
+        self.logger.debug(f"Created Ansible host config file {self.config_file_path}")
 
 
 def usage():
-    """
-    Display usage information for the script.
-    
-    Shows required environmental variables and command-line options.
-    """
+    """Display usage information for the script."""
     print("""
 Usage:
 ------
