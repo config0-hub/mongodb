@@ -4,5 +4,14 @@
   become: true
   gather_facts: false
   tasks:
-    - name: Install Python
-      raw: apt -y update && apt install -y python
+    - name: Install Python 3 and pip
+      raw: apt -y update && apt install -y python3 python3-pip python3-setuptools
+    
+    - name: Check if Python 3 is available
+      raw: python3 --version
+      register: python_version
+      changed_when: false
+      
+    - name: Create symlink for python command if needed
+      raw: if [ ! -f /usr/bin/python ]; then ln -s /usr/bin/python3 /usr/bin/python; fi
+      when: python_version.rc == 0

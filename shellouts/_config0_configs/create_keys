@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 OpenSSL resource handler for creating SSL and symmetric keys.
 
@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 import sys
+import subprocess
 
 from config0_publisher.utilities import OnDiskTmpDir
 from config0_publisher.loggerly import Config0Logger
@@ -82,44 +83,52 @@ class Main(ResourceCmdHelper):
         basedir = os.getcwd()
         os.chdir(tempdir.get())
         
-        # Generate certificate and key
-        cmd = f'openssl req -newkey rsa:{self.cert_bits} -new -x509 -subj "/C={self.country}/ST={self.country_state}/L={self.city}/O=Dis/CN={self.cert_cn}" -days {self.cert_length} -nodes -out mongodb.crt -keyout mongodb.key'
-        self.execute(cmd)
-
-        # Combine into PEM file
-        cmd = 'bash -c \'cat mongodb.crt mongodb.key > mongodb.pem\''
-        self.execute(cmd)
-
-        # Read the PEM file contents
-        cmd = 'cat mongodb.pem'
-        results = self.execute(cmd)
-        
-        # Return to original directory and clean up
-        os.chdir(basedir)
-        tempdir.delete()
-
-        # Create resource metadata
-        resource = {
-            "resource_type": "ssl_pem",
-            "application": self.application,
-            "provider": self.provider,
-            "source_method": self.source_method,
-            "encrypt_fields": self.encrypt_fields,
-            "crypt_fields": self.encrypt_fields,
-            "name": f"{self.inputargs['name']}.pem",
-            "country": self.country,
-            "state": self.country_state,
-            "city": self.city,
-            "cn": self.cert_cn,
-            "length": self.cert_length,
-            "contents": results["output"],
-            "no_dependency": True,
-            "tags": ["mongodb", "mongodb.pem", "pem", "ssl"]
-        }
-        
-        resource['id'] = self.get_hash(resource)
-        resource['_id'] = resource['id']
-        self.write_resource_to_json_file(resource)
+        try:
+            # Generate certificate and key with modern parameters for MongoDB 7.0
+            cmd = (
+                f'openssl req -newkey rsa:{self.cert_bits} -new -x509 '
+                f'-subj "/C={self.country}/ST={self.country_state}/L={self.city}/O=MongoDB/CN={self.cert_cn}" '
+                f'-days {self.cert_length} -nodes -out mongodb.crt -keyout mongodb.key '
+                f'-sha256'  # Use SHA-256 for better security
+            )
+            self.execute(cmd)
+    
+            # Combine into PEM file
+            cmd = 'cat mongodb.crt mongodb.key > mongodb.pem'
+            self.execute(cmd)
+    
+            # Read the PEM file contents
+            cmd = 'cat mongodb.pem'
+            results = self.execute(cmd)
+            
+            # Create resource metadata
+            resource = {
+                "resource_type": "ssl_pem",
+                "application": self.application,
+                "provider": self.provider,
+                "source_method": self.source_method,
+                "encrypt_fields": self.encrypt_fields,
+                "crypt_fields": self.encrypt_fields,
+                "name": f"{self.inputargs['name']}.pem",
+                "country": self.country,
+                "state": self.country_state,
+                "city": self.city,
+                "cn": self.cert_cn,
+                "length": self.cert_length,
+                "bits": self.cert_bits,
+                "contents": results["output"],
+                "no_dependency": True,
+                "tags": ["mongodb", "mongodb.pem", "pem", "ssl", "mongodb7"]
+            }
+            
+            resource['id'] = self.get_hash(resource)
+            resource['_id'] = resource['id']
+            self.write_resource_to_json_file(resource)
+            
+        finally:
+            # Ensure cleanup happens even if there's an error
+            os.chdir(basedir)
+            tempdir.delete()
 
     def create(self):
         """
@@ -131,6 +140,7 @@ class Main(ResourceCmdHelper):
         Returns:
             None: Writes the resource to a JSON file.
         """
+        # MongoDB 7.0 recommended key size
         cmd = 'openssl rand -base64 756'
         results = self.execute(cmd)
 
@@ -144,7 +154,7 @@ class Main(ResourceCmdHelper):
             "crypt_fields": self.encrypt_fields,
             "name": f"{self.inputargs['name']}_keyfile",
             "contents": results["output"],
-            "tags": ["mongodb", "mongodb_key_file", "replica_set_key"]
+            "tags": ["mongodb", "mongodb_key_file", "replica_set_key", "mongodb7"]
         }
         
         resource['id'] = self.get_hash(resource)

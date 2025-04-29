@@ -1,6 +1,5 @@
 storage:
   dbPath: "{{ mongodb_dbpath }}"
-  directoryPerDB: true
   engine: "{{ mongodb_storage_engine }}"
   journal:
 {% if mongodb_is_arbiter or not mongodb_journal_enabled %}
@@ -8,19 +7,21 @@ storage:
 {% else %}
     enabled: true
 {% endif %}
-{% if mongodb_is_arbiter %}
-  smallFiles: true
-{% endif %}
 {% if mongodb_storage_engine == "wiredTiger" %}
   wiredTiger:
     engineConfig:
-      directoryForIndexes: true
+      cacheSizeGB: {{ mongodb_wt_cache_size_gb | default(1) }}
 {% endif %}
 net:
 {% if mongodb_bind_ip is defined %}
   bindIp: {{ mongodb_bind_ip }}
 {% endif %}
   port: {{ mongodb_port }}
+{% if mongodb_pem is defined %}
+  tls:
+    mode: requireTLS
+    certificateKeyFile: {{ mongodb_pem_path }}
+{% endif %}
 security:
 {% if mongodb_authorization_enabled %}
   authorization: enabled
@@ -28,14 +29,7 @@ security:
   authorization: disabled
 {% endif %}
 {% if mongodb_keyfile is defined %}
-  clusterAuthMode: keyFile
   keyFile: {{ mongodb_keyfile_path }}
-{% endif %}
-{% if mongodb_pem is defined %}
-net:
-   ssl:
-      mode: requireSSL
-      PEMKeyFile: {{ mongodb_pem_path }}
 {% endif %}
 {% if not mongodb_enable_localhost_auth_bypass %}
 setParameter:

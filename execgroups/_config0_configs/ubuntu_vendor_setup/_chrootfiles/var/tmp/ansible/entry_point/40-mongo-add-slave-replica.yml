@@ -1,10 +1,40 @@
 ---
-- name: Start Replicaset
-  hosts: 
-    - config_network
+- name: Add Secondary Nodes to MongoDB 7.0 Replica Set
+  hosts: config_network
   remote_user: "{{ os_user }}"
   become: yes
   become_method: sudo
-  gather_facts: no
+  gather_facts: yes  # Changed to 'yes' to collect system information
+  
+  pre_tasks:
+    - name: Wait for MongoDB to be available on all nodes
+      wait_for:
+        port: "{{ mongodb_port }}"
+        timeout: 60
+      delegate_to: "{{ item }}"
+      with_items: "{{ groups['private-secondaries'] }}"
+  
   roles:
-      - ../roles/add_slaves_to_replica
+    - role: ../roles/add_slaves_to_replica
+  
+  post_tasks:
+    - name: Verify replica set members
+      shell: >
+        mongosh 
+        --tls 
+        --tlsAllowInvalidCertificates 
+        --host "localhost:{{ mongodb_port }}" 
+        -u "{{ mongodb_admin_user }}" 
+        -p "{{ mongodb_admin_pass }}" 
+        --authenticationDatabase "admin" 
+        --eval "rs.status().members.map(m => ({name: m.name, state: m.stateStr}))"
+      register: rs_members
+      changed_when: false
+      
+    - name: Display replica set members
+      debug:
+        var: rs_members.stdout_lines
+  
+  tags:
+    - mongodb_repl
+    - add_secondaries

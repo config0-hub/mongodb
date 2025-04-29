@@ -4,7 +4,8 @@
     src: replicaset_init.j2
     dest: /tmp/replicaset_init.js
 
-- name: Execute the initialization script 
-  shell: mongo --ssl --sslAllowInvalidCertificates localhost:{{ mongodb_port }}/admin /tmp/replicaset_init.js
+- name: Execute the initialization script
+  shell: mongosh --tls --tlsAllowInvalidCertificates localhost:{{ mongodb_port }}/admin /tmp/replicaset_init.js
   ignore_errors: yes
-#shell: mongo localhost:{{ mongodb_port }}/admin /tmp/replicaset_init.js
+  # The commented line below is the updated non-TLS version if needed
+  # shell: mongosh localhost:{{ mongodb_port }}/admin /tmp/replicaset_init.js

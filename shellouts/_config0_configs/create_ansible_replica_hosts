@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Ansible MongoDB configuration helper.
 
@@ -69,6 +69,15 @@ class Main(ResourceCmdHelper):
         self.config_ips = self.inputargs["mongodb_config_ips"].split(",")
         self.config_network = self.inputargs["mongodb_config_network"]
 
+        # Get MongoDB version or default to 7.0.0
+        self.mongodb_version = self.inputargs.get("mongodb_version", "7.0.0")
+        
+        # Get storage engine or default to wiredTiger
+        self.storage_engine = self.inputargs.get("mongodb_storage_engine", "wiredTiger")
+        
+        # Get MongoDB port or default to 27017
+        self.mongodb_port = self.inputargs.get("mongodb_port", "27017")
+
         self.clobber = self.inputargs.get("clobber", True)
         if self.clobber in ["None", None, 'none']:
             self.clobber = None
@@ -99,6 +108,9 @@ class Main(ResourceCmdHelper):
         # Return early if the key doesn't exist or has no value
         if not self.inputargs.get(key):
             return None
+
+        # Create directory structure if it doesn't exist
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
         # Decode the base64 value and write to file
         decoded_content = b64_decode(self.inputargs[key])
@@ -150,6 +162,23 @@ class Main(ResourceCmdHelper):
             filepath=filepath,
             permission=0o400
         )
+        
+    def _create_ssh_key(self):
+        """
+        Create the SSH private key for Ansible.
+        
+        Writes the SSH key to the specified location with proper permissions.
+        """
+        filepath = os.path.join(
+            self.exec_dir,
+            "ssh_key.pem"
+        )
+
+        self._write_key_to_file(
+            key="private_key",
+            filepath=filepath,
+            permission=0o400
+        )
 
     def _add_public(self):
         """Add public IPs to the Ansible hosts file."""
@@ -194,6 +223,29 @@ class Main(ResourceCmdHelper):
         for ip in self.private_secondaries:
             self.config_file.write(f"{ip}\n")
         self.config_file.write("\n")
+        
+    def _update_group_vars(self):
+        """
+        Update group_vars/all.yml with MongoDB 7.0 specific settings.
+        
+        Modifies existing template variables with MongoDB 7.0 specific values.
+        """
+        # Calculate WiredTiger cache size - default to 50% of available memory or 1GB
+        wt_cache_size = self.inputargs.get("mongodb_wt_cache_size_gb", "1")
+        
+        # Add MongoDB 7.0 specific variables to templating
+        additional_vars = {
+            "mongodb_version": self.mongodb_version,
+            "mongodb_storage_engine": self.storage_engine,
+            "mongodb_port": self.mongodb_port,
+            "mongodb_wt_cache_size_gb": wt_cache_size,
+            "mongodb_featureCompatibilityVersion": self.mongodb_version.split('.')[0] + '.0'
+        }
+        
+        # Update inputargs with these variables
+        for key, value in additional_vars.items():
+            if f"ANS_VAR_{key}" not in self.inputargs:
+                self.inputargs[f"ANS_VAR_{key}"] = value
 
     def create(self):
         """
@@ -203,13 +255,17 @@ class Main(ResourceCmdHelper):
         creates MongoDB keyfile and certificate.
         """
         self._set_vars()
+        
+        # Update group_vars with MongoDB 7.0 specific settings
+        self._update_group_vars()
 
         # Update and clobber vars all and hosts
         self.templify(clobber=True)
 
-        # Create MongoDB files
+        # Create MongoDB and SSH files
         self._create_mongodb_keyfile()
         self._create_mongodb_pem()
+        self._create_ssh_key()
         
         # Write Ansible hosts file sections
         self._add_public()
@@ -245,6 +301,10 @@ Environmental variables:
         ANS_VAR_mongodb_public_ips
         ANS_VAR_mongodb_private_ips
         ANS_VAR_mongodb_config_ips
+        ANS_VAR_mongodb_version (default: 7.0.0)
+        ANS_VAR_mongodb_storage_engine (default: wiredTiger)
+        ANS_VAR_mongodb_port (default: 27017)
+        ANS_VAR_mongodb_wt_cache_size_gb (default: 1)
         METHOD
     """)
     exit(4)

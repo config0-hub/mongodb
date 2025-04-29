@@ -1,7 +1,6 @@
 ---
-
 - block:
-    - name: copy install mongodb script
+    - name: Copy install MongoDB 7.0 script
       copy:
         dest: "{{ mongodb_installscript_path }}"
         owner: "root"
@@ -9,12 +8,19 @@
         mode: 0755
         src: "{{ mongodb_installscript }}"
 
-    - name: execute install mongodb script
+    - name: Execute MongoDB 7.0 installation script
       command: "{{ mongodb_installscript_path }}"
       environment:
         MONGODB_VERSION: "{{ mongodb_version }}"
-
-    - name: create mongodb configuration
+      register: mongodb_install
+      changed_when: mongodb_install.rc == 0
+      
+    - name: Install Python MongoDB driver
+      pip:
+        name: pymongo[srv]
+        state: present
+      
+    - name: Create MongoDB configuration
       template:
         src: mongod.conf.j2
         dest: /etc/mongod.conf
@@ -23,19 +29,7 @@
         mode: 0644
       notify: restart mongodb
 
-    - name: Install python3-pip
-      apt:
-        name: "python3-pip"
-    
-    - name: Install the latest pymongo package
-      raw: pip3 install pymongo
-      #pip: 
-      #  executable: pip3
-      #  name: pymongo
-      #  state: latest 
-      #  use_mirrors: no
-      #
-    - name: add mongodb directories
+    - name: Add MongoDB directories
       file:
         state: directory
         path: "{{ item }}"
@@ -46,8 +40,17 @@
         - "{{ mongodb_dbpath }}"
         - "{{ mongodb_security_path }}"
         - "{{ mongodb_logpath | dirname }}"
-
-    - name: copy mongodb pem file for ssl
+    
+    - name: Set appropriate permissions on data directory
+      file:
+        path: "{{ mongodb_dbpath }}"
+        state: directory
+        owner: "{{ mongodb_user }}"
+        group: "{{ mongodb_group }}"
+        mode: 0750
+        recurse: yes
+      
+    - name: Copy MongoDB PEM file for TLS
       copy:
         dest: "{{ mongodb_pem_path }}"
         owner: "{{ mongodb_user }}"
@@ -55,8 +58,9 @@
         mode: 0600
         src: "{{ mongodb_pem }}"
       notify: restart mongodb
+      when: mongodb_pem is defined
 
-    - name: copy mongodb replication keyfile
+    - name: Copy MongoDB replication keyfile
       copy:
         dest: "{{ mongodb_keyfile_path }}"
         owner: "{{ mongodb_user }}"
@@ -64,17 +68,22 @@
         mode: 0600
         src: "{{ mongodb_keyfile }}"
       notify: restart mongodb
+      when: mongodb_keyfile is defined
 
-    - name: copy mongodb servicefile path
+    - name: Copy MongoDB service file
       copy:
         dest: "{{ mongodb_servicefile_path }}"
         owner: "root"
         group: "root"
-        mode: 0755
+        mode: 0644  # Changed from 0755 to 0644 (systemd unit files should be 0644)
         src: "{{ mongodb_servicefile }}"
       notify: restart mongodb
 
-    - name: ensure mongodb service is running and enabled on boot
+    - name: Reload systemd after service file changes
+      systemd:
+        daemon_reload: yes
+      
+    - name: Enable and start MongoDB service
       service:
         name: "{{ mongodb_service_name }}"
         enabled: yes
@@ -85,4 +94,4 @@
   become: true
   become_method: sudo
   tags:
-    - mongodb-4.0
+    - mongodb-7.0
