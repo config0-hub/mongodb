@@ -272,6 +272,7 @@ class Main(newSchedStack):
             arguments = self._get_create_arguments()
             arguments["hostname"] = hostname
             arguments["volume_name"] = volume_name  # ref 45304958324
+            arguments["ami_filter"] = 'ubuntu/images/hvm-ssd/ubuntu-noble-24.04-amd64-server-*'
 
             inputargs = {
                 "arguments": arguments,
