@@ -1,5 +1,5 @@
 #!/bin/bash
-# MongoDB 7.0 Installation Script for Ubuntu 24.04 (Noble Numbat)
+# MongoDB 7.0 Installation Script for Ubuntu (using jammy repository)
 
 # Function to check for root privileges
 check_root() {
@@ -13,7 +13,7 @@ check_root() {
 install_mongodb() {
   # Update system packages
   echo "Updating system packages..."
-  apt-get update && apt-get upgrade -y || {
+  apt update || {
     echo "Error: Failed to update system packages."
     exit 1
   }
@@ -27,37 +27,45 @@ install_mongodb() {
 
   # Add MongoDB GPG key
   echo "Adding MongoDB GPG key..."
-  curl -fsSL https://pgp.mongodb.com/server-7.0.asc | \
-    gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg \
-    --dearmor || {
+  curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | \
+    gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor || {
     echo "Error: Failed to add MongoDB GPG key."
     exit 1
   }
 
   # Add MongoDB repository
   echo "Adding MongoDB repository..."
-  echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/7.0 multiverse" | \
+  echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | \
     tee /etc/apt/sources.list.d/mongodb-org-7.0.list || {
     echo "Error: Failed to add MongoDB repository."
     exit 1
   }
 
-  # Install MongoDB
-  echo "Installing MongoDB packages..."
+  # Update package lists
+  echo "Updating package lists..."
   apt-get update || {
     echo "Error: Failed to update package lists after adding MongoDB repository."
     exit 1
   }
 
+  # Install MongoDB
+  echo "Installing MongoDB packages..."
   apt-get install -y mongodb-org || {
     echo "Error: Failed to install MongoDB packages."
     exit 1
   }
 
-  # Enable and start MongoDB service
-  echo "Enabling and starting MongoDB service..."
-  systemctl enable mongod && systemctl start mongod || {
-    echo "Error: Failed to enable or start MongoDB service."
+  # Start MongoDB service
+  echo "Starting MongoDB service..."
+  systemctl start mongod || {
+    echo "Error: Failed to start MongoDB service."
+    exit 1
+  }
+  
+  # Enable MongoDB service to start on boot
+  echo "Enabling MongoDB service to start on boot..."
+  systemctl enable mongod || {
+    echo "Error: Failed to enable MongoDB service."
     exit 1
   }
 
