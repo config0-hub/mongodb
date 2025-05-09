@@ -15,11 +15,6 @@
       register: mongodb_install
       changed_when: mongodb_install.rc == 0
       
-    - name: Install Python MongoDB driver
-      pip:
-        name: pymongo[srv]
-        state: present
-      
     - name: Create MongoDB configuration
       template:
         src: mongod.conf.j2
