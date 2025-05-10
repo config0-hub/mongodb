@@ -37,10 +37,10 @@ class Main(newSchedStack):
 
         self.parse.add_optional(key="ami_filter",
                                 types="str",
-                                default="null")
+                                default='ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*')
 
         self.parse.add_optional(key="ami_owner",
-                                default="null")
+                                default='099720109477')
 
         self.parse.add_optional(key="aws_default_region",
                                 types="str",
@@ -57,11 +57,6 @@ class Main(newSchedStack):
                                 tags="create_vm,mongo_replica",
                                 default="null")
 
-        self.parse.add_optional(key="mongodb_version",
-                                types="str",
-                                tags="mongo_replica",
-                                default="4.2")
-
         self.parse.add_required(key="bastion_sg_id",
                                 default="null")
 
@@ -72,10 +67,11 @@ class Main(newSchedStack):
                                 default="null")
 
         self.parse.add_optional(key="bastion_ami_filter",
-                                default="null")
+                                types = "str",
+                                default="ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*")
 
         self.parse.add_optional(key="bastion_ami_owner",
-                                default="null")
+                                default='099720109477')
 
         self.parse.add_optional(key="bastion_destroy",
                                 default="null")
@@ -272,8 +268,8 @@ class Main(newSchedStack):
             arguments = self._get_create_arguments()
             arguments["hostname"] = hostname
             arguments["volume_name"] = volume_name  # ref 45304958324
-            arguments["ami_filter"] = 'ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*'
-            arguments["ami_owner"] = '099720109477'
+            arguments["ami_filter"] = self.stack.ami_filter
+            arguments["ami_owner"] = self.stack.ami_owner
 
             inputargs = {
                 "arguments": arguments,

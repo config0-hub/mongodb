@@ -101,7 +101,6 @@ def run(stackargs):
     stack.parse.add_optional(key="vm_username", default="ubuntu")
     stack.parse.add_optional(key="mongodb_data_dir", default="/var/lib/mongodb")
     stack.parse.add_optional(key="mongodb_storage_engine", default="wiredTiger")
-    stack.parse.add_optional(key="mongodb_version", default="4.2")
     stack.parse.add_optional(key="mongodb_port", default="27017")
     stack.parse.add_optional(key="mongodb_bind_ip", default="0.0.0.0")
     stack.parse.add_optional(key="mongodb_logpath", default="/var/log/mongodb/mongod.log")
@@ -230,7 +229,6 @@ def run(stackargs):
         "ANS_VAR_mongodb_pem": mongodb_pem,
         "ANS_VAR_mongodb_keyfile": mongodb_keyfile,
         "ANS_VAR_private_key": private_key,
-        "ANS_VAR_mongodb_version": stack.mongodb_version,
         "ANS_VAR_mongodb_port": stack.mongodb_port,
         "ANS_VAR_mongodb_data_dir": stack.mongodb_data_dir,
         "ANS_VAR_mongodb_storage_engine": stack.mongodb_storage_engine,
@@ -260,7 +258,7 @@ def run(stackargs):
     stack.add_groups_to_host(**inputargs)
 
     # mongo install single step
-    human_description = f"Install MongoDb version {stack.mongodb_version}"
+    human_description = f"Install MongoDb"
     env_vars = base_env_vars.copy()
     env_vars["ANS_VAR_exec_ymls"] = "entry_point/20-mongo-setup.yml,entry_point/30-mongo-init-replica.yml,entry_point/40-mongo-add-slave-replica.yml"
     env_vars["DOCKER_ENV_FIELDS"] = ",".join(env_vars.keys())
@@ -280,7 +278,6 @@ def run(stackargs):
     if stack.get_attr("publish_to_saas"):
         _publish_vars = {
             "mongodb_cluster": stack.mongodb_cluster,
-            "mongodb_version": stack.mongodb_version,
             "mongodb_port": stack.mongodb_port,
             "mongodb_data_dir": stack.mongodb_data_dir,
             "mongodb_storage_engine": stack.mongodb_storage_engine,

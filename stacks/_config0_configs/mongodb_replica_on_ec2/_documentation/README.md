@@ -25,7 +25,6 @@ This stack automates the deployment of a MongoDB replica set in AWS. It creates 
 | aws_default_region | Default AWS region | us-east-1 |
 | mongodb_username | MongoDB admin username | null |
 | mongodb_password | MongoDB admin password | null |
-| mongodb_version | MongoDB version | 4.2 |
 | bastion_ami | Bastion host AMI ID | null |
 | bastion_ami_filter | Bastion AMI filter criteria | null |
 | bastion_ami_owner | Bastion AMI owner ID | null |

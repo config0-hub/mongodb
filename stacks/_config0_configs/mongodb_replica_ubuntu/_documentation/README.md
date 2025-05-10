@@ -24,7 +24,6 @@ This stack automates the deployment of a MongoDB replica set cluster on AWS. It 
 | vm_username | Configuration for vm username | "ubuntu" |
 | mongodb_data_dir | Directory where MongoDB stores data | "/var/lib/mongodb" |
 | mongodb_storage_engine | MongoDB storage engine | "wiredTiger" |
-| mongodb_version | MongoDB version | "4.2" |
 | mongodb_port | MongoDB port number | "27017" |
 | mongodb_bind_ip | MongoDB bind IP address | "0.0.0.0" |
 | mongodb_logpath | MongoDB log file path | "/var/log/mongodb/mongod.log" |
