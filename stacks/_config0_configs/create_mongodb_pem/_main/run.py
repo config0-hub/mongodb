@@ -34,7 +34,7 @@ def run(stackargs):
 
     env_vars = {
         "NAME": stack.basename,
-        "METHOD": "create_ssl"
+        "METHOD": "create_ssl_combined"
     }
 
     inputargs = {

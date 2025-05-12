@@ -1,20 +1,114 @@
 ---
-- block:
-    - name: Copy install MongoDB 7.0 script
-      copy:
-        dest: "{{ mongodb_installscript_path }}"
-        owner: "root"
-        group: "root"
-        mode: 0755
-        src: "{{ mongodb_installscript }}"
+- name: Update system packages
+  apt:
+    update_cache: yes
+  become: true
+  register: apt_update
+  failed_when: apt_update is failed
+  
+- name: Install dependencies
+  apt:
+    name: 
+      - gnupg
+      - curl
+      - haveged
+    state: present
+  become: true
+  register: deps_result
+  failed_when: deps_result is failed
+  
+- name: Ensure haveged is running for entropy
+  service:
+    name: haveged
+    state: started
+    enabled: yes
+  become: true
+  ignore_errors: yes
+  
+- name: Download MongoDB GPG key
+  get_url:
+    url: https://www.mongodb.org/static/pgp/server-7.0.asc
+    dest: /tmp/mongodb-server-7.0.asc
+    mode: '0644'
+  become: true
+  register: get_key
+  failed_when: get_key is failed
+  
+- name: Dearmor MongoDB GPG key
+  shell: gpg --batch --yes -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor /tmp/mongodb-server-7.0.asc
+  args:
+    creates: /usr/share/keyrings/mongodb-server-7.0.gpg
+  become: true
+  register: gpg_result
+  failed_when: gpg_result is failed
+  
+- name: Remove incorrect MongoDB repository file
+  file:
+    path: /etc/apt/sources.list.d/mongodb-org-7.0.list
+    state: absent
+  become: true
+  
+- name: Add MongoDB repository (using jammy repo for Ubuntu 24.04)
+  shell: echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+  become: true
+  register: repo_result
+  failed_when: repo_result is failed
+  
+- name: Update package lists
+  apt:
+    update_cache: yes
+  become: true
+  register: apt_update_after_repo
+  retries: 3
+  delay: 5
+  until: apt_update_after_repo is success
+  
+- name: Install MongoDB packages
+  apt:
+    name: mongodb-org
+    state: present
+  become: true
+  register: mongodb_install
+  failed_when: mongodb_install is failed
+  
+- name: Start MongoDB service
+  service:
+    name: mongod
+    state: started
+  become: true
+  register: start_result
+  failed_when: start_result is failed
+  
+- name: Enable MongoDB service to start on boot
+  service:
+    name: mongod
+    enabled: yes
+  become: true
+  register: enable_result
+  failed_when: enable_result is failed
+  
+- name: Verify MongoDB installation
+  command: mongod --version
+  become: true
+  register: version_check
+  changed_when: false
+  failed_when: false
+  
+- name: Show MongoDB verification results
+  debug:
+    msg: "MongoDB installation verified successfully. Version: {{ version_check.stdout_lines[0] if version_check.rc == 0 else 'MongoDB verification failed!' }}"
+  
+- name: Get MongoDB service status
+  command: systemctl status mongod
+  become: true
+  register: status_result
+  changed_when: false
+  
+- name: Show MongoDB service status
+  debug:
+    msg: "{{ status_result.stdout_lines }}"
 
-    - name: Execute MongoDB 7.0 installation script
-      command: "{{ mongodb_installscript_path }}"
-      environment:
-        MONGODB_VERSION: "{{ mongodb_version }}"
-      register: mongodb_install
-      changed_when: mongodb_install.rc == 0
-      
+- block:
     - name: Create MongoDB configuration
       template:
         src: mongod.conf.j2
@@ -35,7 +129,7 @@
         - "{{ mongodb_dbpath }}"
         - "{{ mongodb_security_path }}"
         - "{{ mongodb_logpath | dirname }}"
-    
+
     - name: Set appropriate permissions on data directory
       file:
         path: "{{ mongodb_dbpath }}"
@@ -44,7 +138,7 @@
         group: "{{ mongodb_group }}"
         mode: 0750
         recurse: yes
-      
+
     - name: Copy MongoDB PEM file for TLS
       copy:
         dest: "{{ mongodb_pem_path }}"
@@ -77,7 +171,7 @@
     - name: Reload systemd after service file changes
       systemd:
         daemon_reload: yes
-      
+
     - name: Enable and start MongoDB service
       service:
         name: "{{ mongodb_service_name }}"

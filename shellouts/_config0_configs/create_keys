@@ -74,7 +74,117 @@ class Main(ResourceCmdHelper):
         Create an SSL certificate for MongoDB.
         
         Generates a PEM file containing both the certificate and private key,
-        and stores it as a resource.
+        and a separate CA certificate file for MongoDB 7.0.6+ compatibility.
+        
+        Returns:
+            None: Writes the resources to JSON files.
+        """
+        tempdir = OnDiskTmpDir()
+        basedir = os.getcwd()
+        os.chdir(tempdir.get())
+        
+        try:
+            # Generate a CA certificate (self-signed)
+            ca_key_cmd = f'openssl genrsa -out ca.key {self.cert_bits}'
+            self.execute(ca_key_cmd)
+            
+            ca_cert_cmd = (
+                f'openssl req -new -x509 -key ca.key -out ca.pem '
+                f'-subj "/C={self.country}/ST={self.country_state}/L={self.city}/O=MongoDB CA/CN={self.cert_cn} CA" '
+                f'-days {self.cert_length} -sha256'
+            )
+            self.execute(ca_cert_cmd)
+            
+            # Generate server key
+            server_key_cmd = f'openssl genrsa -out mongodb.key {self.cert_bits}'
+            self.execute(server_key_cmd)
+            
+            # Generate CSR
+            csr_cmd = (
+                f'openssl req -new -key mongodb.key -out mongodb.csr '
+                f'-subj "/C={self.country}/ST={self.country_state}/L={self.city}/O=MongoDB/CN={self.cert_cn}" '
+                f'-sha256'
+            )
+            self.execute(csr_cmd)
+            
+            # Sign server CSR with CA
+            sign_cmd = (
+                f'openssl x509 -req -in mongodb.csr -CA ca.pem -CAkey ca.key '
+                f'-CAcreateserial -out mongodb.crt -days {self.cert_length} -sha256'
+            )
+            self.execute(sign_cmd)
+            
+            # Combine key and cert into PEM file for server
+            combine_cmd = 'cat mongodb.key mongodb.crt > mongodb.pem'
+            self.execute(combine_cmd)
+            
+            # Read the PEM file contents
+            cmd = 'cat mongodb.pem'
+            results = self.execute(cmd)
+            
+            # Read the CA certificate
+            ca_cmd = 'cat ca.pem'
+            ca_results = self.execute(ca_cmd)
+            
+            # Create resource metadata for server certificate+key
+            resource = {
+                "resource_type": "ssl_pem",
+                "application": self.application,
+                "provider": self.provider,
+                "source_method": self.source_method,
+                "encrypt_fields": self.encrypt_fields,
+                "crypt_fields": self.encrypt_fields,
+                "name": f"{self.inputargs['name']}.pem",
+                "country": self.country,
+                "state": self.country_state,
+                "city": self.city,
+                "cn": self.cert_cn,
+                "length": self.cert_length,
+                "bits": self.cert_bits,
+                "contents": results["output"],
+                "no_dependency": True,
+                "tags": ["mongodb", "mongodb.pem", "pem", "ssl", "mongodb7"]
+            }
+            
+            resource['id'] = self.get_hash(resource)
+            resource['_id'] = resource['id']
+            self.write_resource_to_json_file(resource)
+            
+            # Create resource metadata for CA certificate
+            ca_resource = {
+                "resource_type": "ssl_ca",
+                "application": self.application,
+                "provider": self.provider,
+                "source_method": self.source_method,
+                "encrypt_fields": self.encrypt_fields,
+                "crypt_fields": self.encrypt_fields,
+                "name": f"{self.inputargs['name']}_ca.pem",
+                "country": self.country,
+                "state": self.country_state,
+                "city": self.city,
+                "cn": f"{self.cert_cn} CA",
+                "length": self.cert_length,
+                "bits": self.cert_bits,
+                "contents": ca_results["output"],
+                "no_dependency": True,
+                "tags": ["mongodb", "mongodb_ca", "ca", "ssl", "mongodb7"]
+            }
+            
+            ca_resource['id'] = self.get_hash(ca_resource)
+            ca_resource['_id'] = ca_resource['id']
+            self.write_resource_to_json_file(ca_resource)
+            
+        finally:
+            # Ensure cleanup happens even if there's an error
+            os.chdir(basedir)
+            tempdir.delete()
+    
+    def create_ssl_combined(self):
+        """
+        Create a combined SSL certificate for MongoDB.
+        
+        Generates a single PEM file containing the certificate, private key, and CA certificate.
+        This can be used as both certificateKeyFile and CAFile in MongoDB configuration.
         
         Returns:
             None: Writes the resource to a JSON file.
@@ -93,7 +203,8 @@ class Main(ResourceCmdHelper):
             )
             self.execute(cmd)
     
-            # Combine into PEM file
+            # Combine into PEM file (certificate first, then key)
+            # This ordering is important for MongoDB to properly read it as both cert and CA
             cmd = 'cat mongodb.crt mongodb.key > mongodb.pem'
             self.execute(cmd)
     
@@ -103,13 +214,13 @@ class Main(ResourceCmdHelper):
             
             # Create resource metadata
             resource = {
-                "resource_type": "ssl_pem",
+                "resource_type": "ssl_pem_combined",
                 "application": self.application,
                 "provider": self.provider,
                 "source_method": self.source_method,
                 "encrypt_fields": self.encrypt_fields,
                 "crypt_fields": self.encrypt_fields,
-                "name": f"{self.inputargs['name']}.pem",
+                "name": f"{self.inputargs['name']}_combined.pem",
                 "country": self.country,
                 "state": self.country_state,
                 "city": self.city,
@@ -118,7 +229,8 @@ class Main(ResourceCmdHelper):
                 "bits": self.cert_bits,
                 "contents": results["output"],
                 "no_dependency": True,
-                "tags": ["mongodb", "mongodb.pem", "pem", "ssl", "mongodb7"]
+                "description": "Combined certificate, key, and CA for MongoDB 7.0.6+",
+                "tags": ["mongodb", "mongodb.pem", "combined_pem", "ssl", "mongodb7"]
             }
             
             resource['id'] = self.get_hash(resource)
@@ -188,6 +300,9 @@ if __name__ == '__main__':
     elif method == "create_ssl":
         main.check_required_inputargs(keys=["name"])
         main.create_ssl()
+    elif method == "create_ssl_combined":
+        main.check_required_inputargs(keys=["name"])
+        main.create_ssl_combined()
     else:
         print("""
 Usage:
@@ -197,7 +312,7 @@ or
 script + json_input (as argument)
 
 Environmental variables:
-    create/create_ssl:
+    create/create_ssl/create_ssl_combined:
         name (required)
         JOB_INSTANCE_ID (optional)
         SCHEDULE_ID (optional)

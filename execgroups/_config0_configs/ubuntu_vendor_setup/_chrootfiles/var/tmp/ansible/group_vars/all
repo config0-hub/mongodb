@@ -13,7 +13,6 @@ mongodb_pem_path: /etc/mongodb/security/mongo.pem
 mongodb_servicefile_path: /etc/systemd/system/mongodb.service
 mongodb_servicefile: files/mongodb.service
 mongodb_storage_engine: "wiredTiger"  # WiredTiger is now the default
-mongodb_journal_enabled: true
 mongodb_profiling_threshold: 100
 mongodb_profiling_mode: "off"
 mongodb_enable_localhost_auth_bypass: true
