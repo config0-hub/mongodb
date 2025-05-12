@@ -220,7 +220,7 @@ class Main(ResourceCmdHelper):
                 "source_method": self.source_method,
                 "encrypt_fields": self.encrypt_fields,
                 "crypt_fields": self.encrypt_fields,
-                "name": f"{self.inputargs['name']}_combined.pem",
+                "name": f"{self.inputargs['name']}.pem",
                 "country": self.country,
                 "state": self.country_state,
                 "city": self.city,
