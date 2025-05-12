@@ -4,7 +4,7 @@ storage:
 {% if mongodb_storage_engine == "wiredTiger" %}
   wiredTiger:
     engineConfig:
-      cacheSizeGB: {{ mongodb_wt_cache_size_gb | default(1) }}
+      cacheSizeGB: {{ [mongodb_wt_cache_size_gb | default(1) | int, 1] | max }}
 {% endif %}
 net:
 {% if mongodb_bind_ip is defined %}
@@ -17,6 +17,7 @@ net:
     certificateKeyFile: {{ mongodb_pem_path }}
     CAFile: {{ mongodb_pem_path }}  # Use same file as both certificate and CA
     allowConnectionsWithoutCertificates: true
+    allowInvalidHostnames: true     # Added to fix hostname verification issues
 {% endif %}
 security:
 {% if mongodb_authorization_enabled %}

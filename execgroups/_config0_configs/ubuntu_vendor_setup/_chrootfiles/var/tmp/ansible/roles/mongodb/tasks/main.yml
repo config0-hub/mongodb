@@ -93,20 +93,6 @@
   register: version_check
   changed_when: false
   failed_when: false
-  
-- name: Show MongoDB verification results
-  debug:
-    msg: "MongoDB installation verified successfully. Version: {{ version_check.stdout_lines[0] if version_check.rc == 0 else 'MongoDB verification failed!' }}"
-  
-- name: Get MongoDB service status
-  command: systemctl status mongod
-  become: true
-  register: status_result
-  changed_when: false
-  
-- name: Show MongoDB service status
-  debug:
-    msg: "{{ status_result.stdout_lines }}"
 
 - block:
     - name: Create MongoDB configuration
@@ -180,6 +166,20 @@
 
     - meta: flush_handlers
 
+    - name: Show MongoDB verification results
+      debug:
+        msg: "MongoDB installation verified successfully. Version: {{ version_check.stdout_lines[0] if version_check.rc == 0 else 'MongoDB verification failed!' }}"
+      
+    - name: Get MongoDB service status
+      command: systemctl status mongod
+      become: true
+      register: status_result
+      changed_when: false
+      
+    - name: Show MongoDB service status
+      debug:
+        msg: "{{ status_result.stdout_lines }}"
+    
   become: true
   become_method: sudo
   tags:
