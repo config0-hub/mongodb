@@ -28,7 +28,7 @@ def _get_ssh_key(stack):
 def _get_mongodb_pem(stack):
     _lookup = {
         "must_exists": True,
-        "resource_type": "ssl_pem",
+        "resource_type": "ssl_pem_combined",
         "provider": "openssl",
         "name": f"{stack.mongodb_cluster}.pem",
         "serialize": True,
