@@ -39,18 +39,17 @@ This stack automates the deployment of a MongoDB replica set cluster on AWS. It 
 ## Dependencies
 
 ### Substacks
-- [config0-publish:::ebs_volume_attach](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/stacks/config0-publish/ebs_volume_attach/default)
+- [config0-publish:::ebs_volume_attach](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/ebs_volume_attach)
 
 ### Execgroups
-- [config0-publish:::ubuntu::docker](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/exec/groups/config0-publish/ubuntu/docker/default)
-- [config0-publish:::ansible::ubuntu](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/exec/groups/config0-publish/ansible/ubuntu/default)
-- [config0-publish:::aws_storage::config_vol](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/exec/groups/config0-publish/aws_storage/config_vol/default)
-- [config0-publish:::mongodb::ubuntu_vendor_setup](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/exec/groups/config0-publish/mongodb/ubuntu_vendor_setup/default)
-- [config0-publish:::mongodb::ubuntu_vendor_init_replica](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/exec/groups/config0-publish/mongodb/ubuntu_vendor_init_replica/default)
+- [config0-publish:::ubuntu::docker](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-publish/ubuntu/docker)
+- [config0-publish:::ansible::ubuntu](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-publish/ansible/ubuntu)
+- [config0-publish:::aws_storage::config_vol](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-publish/aws_storage/config_vol)
+- [config0-publish:::mongodb::ubuntu_vendor_setup](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-publish/mongodb/ubuntu_vendor_setup)
+- [config0-publish:::mongodb::ubuntu_vendor_init_replica](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-publish/mongodb/ubuntu_vendor_init_replica)
 
 ### Shelloutconfigs
-- [config0-publish:::terraform::resource_wrapper](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/shelloutconfigs/config0-publish/terraform/resource_wrapper/default)
-- [config0-publish:::github::lambda_trigger_stepf](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/shelloutconfigs/config0-publish/github/lambda_trigger_stepf/default)
+No shelloutconfigs explicitly defined in the code.
 
 ## License
 <pre>

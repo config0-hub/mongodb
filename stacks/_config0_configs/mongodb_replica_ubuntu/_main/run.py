@@ -291,6 +291,6 @@ def run(stackargs):
             _publish_vars["mongodb_username"] = stack.mongodb_username
             _publish_vars["mongodb_password"] = stack.mongodb_password
 
-        stack.publish(_publish_vars)
+        stack.output_to_ui(_publish_vars)
 
     return stack.get_results()

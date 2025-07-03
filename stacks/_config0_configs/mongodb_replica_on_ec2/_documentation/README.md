@@ -42,19 +42,13 @@ This stack automates the deployment of a MongoDB replica set in AWS. It creates 
 ## Dependencies
 
 ### Substacks
-- [config0-publish:::ec2_ubuntu](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/stacks/config0-publish/ec2_ubuntu/default)
-- [config0-publish:::create_mongodb_pem](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/stacks/config0-publish/create_mongodb_pem/default)
-- [config0-publish:::create_mongodb_keyfile](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/stacks/config0-publish/create_mongodb_keyfile/default)
-- [config0-publish:::mongodb_replica_ubuntu](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/stacks/config0-publish/mongodb_replica_ubuntu/default)
-- [config0-publish:::delete_resource](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/stacks/config0-publish/delete_resource/default)
-- [config0-publish:::new_ec2_ssh_key](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/stacks/config0-publish/new_ec2_ssh_key/default)
-- [config0-publish:::config0_core::output_resource_to_ui](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/stacks/config0-publish/config0_core/output_resource_to_ui/default)
-
-### Execgroups
-- [config0-publish:::github::lambda_trigger_stepf](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/exec/groups/config0-publish/github/lambda_trigger_stepf/default)
-
-### Shelloutconfigs
-- [config0-publish:::terraform::resource_wrapper](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/shelloutconfigs/config0-publish/terraform/resource_wrapper/default)
+- [config0-publish:::ec2_ubuntu](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/ec2_ubuntu)
+- [config0-publish:::create_mongodb_pem](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/create_mongodb_pem)
+- [config0-publish:::create_mongodb_keyfile](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/create_mongodb_keyfile)
+- [config0-publish:::mongodb_replica_ubuntu](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/mongodb_replica_ubuntu)
+- [config0-publish:::delete_resource](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/delete_resource)
+- [config0-publish:::new_ec2_ssh_key](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/new_ec2_ssh_key)
+- [config0-publish:::config0_core::output_resource_to_ui](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/config0_core/output_resource_to_ui)
 
 ## License
 <pre>
@@ -62,5 +56,14 @@ Copyright (C) 2025 Gary Leong <gary@config0.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
-the Free Software Foundation, version 3 of the License.
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 </pre>
