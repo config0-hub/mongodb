@@ -25,52 +25,14 @@
   become: true
   ignore_errors: yes
 
-- name: Download MongoDB GPG key (with disabled SSL verification)
-  get_url:
-    url: https://www.mongodb.org/static/pgp/server-7.0.asc
-    dest: /tmp/mongodb-server-7.0.asc
-    mode: '0644'
-    validate_certs: no
-  become: true
-  register: get_key
-  failed_when: get_key is failed
-  when: ansible_distribution == "Ubuntu"
-
-- name: Alternative - Download MongoDB GPG key (using uri module)
-  uri:
-    url: https://www.mongodb.org/static/pgp/server-7.0.asc
-    method: GET
-    return_content: yes
-    validate_certs: no
-  become: true
-  register: get_key_uri
-  failed_when: get_key_uri.status != 200
-  when: get_key is failed
-
-- name: Save the MongoDB GPG key to a file (from uri method)
-  copy:
-    content: "{{ get_key_uri.content }}"
-    dest: /tmp/mongodb-server-7.0.asc
-    mode: '0644'
-  become: true
-  when: get_key is failed and get_key_uri is success
-
-- name: Fallback - Copy MongoDB GPG key from local file
-  copy:
-    src: files/mongodb-server-7.0.asc
-    dest: /tmp/mongodb-server-7.0.asc
-    mode: '0644'
-  become: true
-  when: (get_key is failed or get_key is not defined) and 
-        (get_key_uri is failed or get_key_uri is not defined)
-
-- name: Dearmor MongoDB GPG key
-  shell: gpg --batch --yes -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor /tmp/mongodb-server-7.0.asc
+- name: Download MongoDB GPG key
+  shell: "curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-server-7.0.gpg"
   args:
     creates: /usr/share/keyrings/mongodb-server-7.0.gpg
   become: true
   register: gpg_result
   failed_when: gpg_result is failed
+  when: ansible_distribution == "Ubuntu"
 
 - name: Remove incorrect MongoDB repository file
   file:
@@ -115,57 +77,82 @@
   file:
     state: directory
     path: "{{ item }}"
-    owner: "{{ mongodb_user }}"
-    group: "{{ mongodb_group }}"
+    owner: "{{ mongodb_user | default('mongodb') }}"
+    group: "{{ mongodb_group | default('mongodb') }}"
     mode: 0755
   with_items:
-    - "{{ mongodb_dbpath }}"
-    - "{{ mongodb_security_path }}"
-    - "{{ mongodb_logpath | dirname }}"
+    - "{{ mongodb_dbpath | default('/var/lib/mongodb') }}"
+    - "{{ mongodb_security_path | default('/var/lib/mongodb/security') }}"
+    - "{{ mongodb_logpath | dirname | default('/var/log/mongodb') }}"
   become: true
 
 - name: Set appropriate permissions on data directory
   file:
-    path: "{{ mongodb_dbpath }}"
+    path: "{{ mongodb_dbpath | default('/var/lib/mongodb') }}"
     state: directory
-    owner: "{{ mongodb_user }}"
-    group: "{{ mongodb_group }}"
+    owner: "{{ mongodb_user | default('mongodb') }}"
+    group: "{{ mongodb_group | default('mongodb') }}"
     mode: 0750
     recurse: yes
   become: true
 
-- name: Copy MongoDB PEM file for TLS
-  copy:
-    dest: "{{ mongodb_pem_path }}"
-    owner: "{{ mongodb_user }}"
-    group: "{{ mongodb_group }}"
-    mode: 0600
-    src: "{{ mongodb_pem }}"
-  notify: restart mongodb
-  become: true
-  when: mongodb_pem is defined and mongodb_pem
+- name: Create MongoDB keyfile from base64
+  block:
+    - name: Create temp file for keyfile
+      tempfile:
+        state: file
+        suffix: keyfile
+      register: temp_keyfile
+      when: mongodb_keyfile is defined and mongodb_keyfile
 
-- name: Copy MongoDB replication keyfile
-  copy:
-    dest: "{{ mongodb_keyfile_path }}"
-    owner: "{{ mongodb_user }}"
-    group: "{{ mongodb_group }}"
-    mode: 0600
-    src: "{{ mongodb_keyfile }}"
-  notify: restart mongodb
+    - name: Decode keyfile to temp file
+      copy:
+        content: "{{ mongodb_keyfile | b64decode }}"
+        dest: "{{ temp_keyfile.path }}"
+        mode: 0600
+      when: mongodb_keyfile is defined and mongodb_keyfile and temp_keyfile.path is defined
+
+    - name: Copy keyfile to destination
+      copy:
+        src: "{{ temp_keyfile.path }}"
+        dest: "{{ mongodb_security_path | default('/var/lib/mongodb/security') }}/keyfile"
+        owner: "{{ mongodb_user | default('mongodb') }}"
+        group: "{{ mongodb_group | default('mongodb') }}"
+        mode: 0600
+        remote_src: yes
+      notify: restart mongodb
+      when: mongodb_keyfile is defined and mongodb_keyfile and temp_keyfile.path is defined
   become: true
   when: mongodb_keyfile is defined and mongodb_keyfile
 
-- name: Copy MongoDB service file
-  copy:
-    dest: "{{ mongodb_servicefile_path }}"
-    owner: "root"
-    group: "root"
-    mode: 0644
-    src: "{{ mongodb_servicefile }}"
-  notify: restart mongodb
+- name: Create MongoDB PEM from base64
+  block:
+    - name: Create temp file for PEM
+      tempfile:
+        state: file
+        suffix: pem
+      register: temp_pem
+      when: mongodb_pem is defined and mongodb_pem
+
+    - name: Decode PEM to temp file
+      copy:
+        content: "{{ mongodb_pem | b64decode }}"
+        dest: "{{ temp_pem.path }}"
+        mode: 0600
+      when: mongodb_pem is defined and mongodb_pem and temp_pem.path is defined
+
+    - name: Copy PEM to destination
+      copy:
+        src: "{{ temp_pem.path }}"
+        dest: "{{ mongodb_security_path | default('/var/lib/mongodb/security') }}/mongodb.pem"
+        owner: "{{ mongodb_user | default('mongodb') }}"
+        group: "{{ mongodb_group | default('mongodb') }}"
+        mode: 0600
+        remote_src: yes
+      notify: restart mongodb
+      when: mongodb_pem is defined and mongodb_pem and temp_pem.path is defined
   become: true
-  when: mongodb_servicefile is defined and mongodb_servicefile
+  when: mongodb_pem is defined and mongodb_pem
 
 - name: Reload systemd after service file changes
   systemd:
@@ -174,7 +161,7 @@
 
 - name: Enable and start MongoDB service
   service:
-    name: "{{ mongodb_service_name }}"
+    name: "{{ mongodb_service_name | default('mongod') }}"
     enabled: yes
     state: started
   become: true
