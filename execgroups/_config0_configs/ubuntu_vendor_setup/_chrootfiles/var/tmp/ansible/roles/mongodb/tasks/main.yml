@@ -1,10 +1,19 @@
 ---
+- name: Check Ubuntu version
+  set_fact:
+    mongodb_repo_version: "{{ '6.0' if ansible_distribution_release == 'noble' else '7.0' }}"
+  become: true
+
+- name: Display selected MongoDB version
+  debug:
+    msg: "Using MongoDB {{ mongodb_repo_version }} for {{ ansible_distribution }} {{ ansible_distribution_release }}"
+
 - name: Update system packages
   apt:
     update_cache: yes
   become: true
   register: apt_update
-  failed_when: apt_update is failed
+  ignore_errors: yes
 
 - name: Install dependencies
   apt:
@@ -25,47 +34,49 @@
   become: true
   ignore_errors: yes
 
-- name: Download MongoDB GPG key and add to keyring (one command)
+- name: Remove existing MongoDB repository files
+  shell: rm -f /etc/apt/sources.list.d/mongodb*.list
+  become: true
+  changed_when: false
+
+- name: Download MongoDB GPG key and add to keyring
   shell: |
     set -e
-    curl -sL https://www.mongodb.org/static/pgp/server-7.0.asc | \
+    curl -sL https://www.mongodb.org/static/pgp/server-{{ mongodb_repo_version }}.asc | \
     gpg --dearmor | \
-    sudo tee /usr/share/keyrings/mongodb-server-7.0.gpg > /dev/null
+    sudo tee /usr/share/keyrings/mongodb-server-{{ mongodb_repo_version }}.gpg > /dev/null
   args:
-    creates: /usr/share/keyrings/mongodb-server-7.0.gpg
+    creates: "/usr/share/keyrings/mongodb-server-{{ mongodb_repo_version }}.gpg"
   become: true
   register: gpg_result
   failed_when: gpg_result.rc != 0
-  when: ansible_distribution == "Ubuntu"
-
-- name: Remove incorrect MongoDB repository file
-  file:
-    path: /etc/apt/sources.list.d/mongodb-org-7.0.list
-    state: absent
-  become: true
 
 - name: Add MongoDB repository
-  shell: echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu {{ ansible_distribution_release }}/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+  shell: |
+    echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-{{ mongodb_repo_version }}.gpg ] https://repo.mongodb.org/apt/ubuntu {{ ansible_distribution_release | regex_replace('noble', 'jammy') }}/mongodb-org/{{ mongodb_repo_version }} multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-{{ mongodb_repo_version }}.list
   become: true
   register: repo_result
   failed_when: repo_result.rc != 0
 
-- name: Update package lists
-  apt:
-    update_cache: yes
+- name: Update package lists (with retries)
+  shell: apt-get update
   become: true
   register: apt_update_after_repo
   retries: 3
   delay: 5
-  until: apt_update_after_repo is success
+  until: apt_update_after_repo.rc == 0
+  ignore_errors: yes
 
 - name: Install MongoDB packages
   apt:
     name: mongodb-org
     state: present
+    update_cache: yes
   become: true
   register: mongodb_install
-  failed_when: mongodb_install is failed
+  retries: 3
+  delay: 5
+  until: mongodb_install is success
 
 - name: Create MongoDB configuration directory
   file:
@@ -156,7 +167,7 @@
     msg: "MongoDB installation verified successfully. Version: {{ version_check.stdout_lines[0] if version_check.rc == 0 else 'MongoDB verification failed!' }}"
 
 - name: Get MongoDB service status
-  shell: systemctl status mongod
+  shell: systemctl status mongod || true
   become: true
   register: status_result
   changed_when: false
@@ -164,4 +175,4 @@
 
 - name: Show MongoDB service status
   debug:
-    msg: "{{ status_result.stdout_lines }}"
+    msg: "{{ status_result.stdout_lines | default(['Service status check failed']) }}"
