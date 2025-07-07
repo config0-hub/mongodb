@@ -135,6 +135,7 @@
     mode: 0644
   become: true
   register: config_update
+  notify: restart mongodb
 
 - name: Fix MongoDB environment variables in systemd service
   lineinfile:
@@ -143,6 +144,7 @@
     state: absent
   become: true
   register: fix_systemd
+  notify: restart mongodb
 
 - name: Reload systemd
   systemd:
@@ -256,12 +258,3 @@
   debug:
     msg: "SELinux status: {{ selinux_status.stdout }}"
   when: selinux_status is defined and selinux_status.stdout is defined
-
-# Add handlers at the end
-handlers:
-  - name: restart mongodb
-    service:
-      name: mongod
-      state: restarted
-    become: true
-    ignore_errors: yes
