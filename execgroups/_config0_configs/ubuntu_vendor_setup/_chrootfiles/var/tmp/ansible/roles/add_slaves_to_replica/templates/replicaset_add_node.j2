@@ -1,0 +1,48 @@
+// Add replica set members
+{% for private_id in private_replicas %}
+try {
+  print("Adding member: {{ hostvars[private_id].inventory_hostname }}:{{ mongodb_port }}");
+  
+  // Check if the member is already part of the replica set
+  let config = rs.conf();
+  let memberExists = false;
+  
+  if (config && config.members) {
+    for (let i = 0; i < config.members.length; i++) {
+      let hostPort = config.members[i].host;
+      if (hostPort === "{{ hostvars[private_id].inventory_hostname }}:{{ mongodb_port }}") {
+        print("Member {{ hostvars[private_id].inventory_hostname }}:{{ mongodb_port }} is already part of the replica set.");
+        memberExists = true;
+        break;
+      }
+    }
+  }
+  
+  if (!memberExists) {
+    // Add the new member to the replica set
+    let result = rs.add("{{ hostvars[private_id].inventory_hostname }}:{{ mongodb_port }}");
+    
+    if (result.ok) {
+      print("Successfully added {{ hostvars[private_id].inventory_hostname }}:{{ mongodb_port }} to the replica set");
+    } else {
+      print("Failed to add member: " + JSON.stringify(result));
+    }
+    
+    // Wait for replica set reconfiguration
+    sleep(3000);
+  }
+} catch (e) {
+  print("Error adding member {{ hostvars[private_id].inventory_hostname }}:{{ mongodb_port }}: " + e);
+}
+{% endfor %}
+
+// Print final replica set configuration
+try {
+  print("Final replica set configuration:");
+  printjson(rs.conf());
+  
+  print("Replica set status:");
+  printjson(rs.status());
+} catch (e) {
+  print("Error getting replica set information: " + e);
+}

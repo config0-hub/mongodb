@@ -1,0 +1,13 @@
+---
+- name: Install and configure MongoDB 7.0
+  hosts: configuration
+  roles:
+    - role: ../roles/mongodb
+      mongodb_repl_set_name: rs0
+      mongodb_keyfile: ../roles/init_replica_nodes/files/mongodb_keyfile
+      mongodb_pem: ../roles/init_replica_nodes/files/mongodb.pem
+      # mongodb_repl_oplog_size: 51200
+      mongodb_wt_cache_size_gb: "{{ ((ansible_memtotal_mb * 0.5) / 1024) | round(0, 'floor') | int }}"
+      mongodb_featureCompatibilityVersion: "7.0"
+  tags:
+    - mongodb_install

@@ -1,0 +1,8 @@
+---
+- hosts: all
+  remote_user: "{{ os_user }}"
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Install Python 3 and pip
+      raw: apt -y update && apt install -y python3 python3-pip python3-setuptools

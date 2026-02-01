@@ -1,0 +1,332 @@
+#!/usr/bin/env python3
+"""
+Ansible MongoDB configuration helper.
+
+This module provides functionality to create Ansible host configuration
+files for MongoDB replica sets.
+
+Copyright (C) 2025 Gary Leong gary@config0.com
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
+import os
+import sys
+
+from config0_publisher.serialization import b64_decode
+from config0_publisher.loggerly import Config0Logger
+from config0_publisher.resource.manage import ResourceCmdHelper
+
+
+class Main(ResourceCmdHelper):
+    """
+    Main class for creating Ansible MongoDB replica hosts configuration.
+    
+    This class provides methods to generate Ansible inventory files and
+    necessary configurations for MongoDB replica sets.
+    """
+
+    def __init__(self):
+        """Initialize the MongoDB Ansible Helper."""
+        ResourceCmdHelper.__init__(
+            self,
+            app_name="ansible",
+            set_must_exists=["stateful_id"]
+        )
+
+        self.classname = 'MONGODB_ANSIBLE_HELPER'
+        self.logger = Config0Logger(
+            self.classname,
+            logcategory="cloudprovider"
+        )
+        self.logger.debug(f"Instantiating {self.classname}")
+
+        # Remap application variables from the inputargs
+        # e.g. ANS_VAR_mongodb_public_ips to mongodb_public_ips
+        self.remap_app_vars()
+
+    def _set_vars(self):
+        """
+        Set variables for Ansible configuration.
+        
+        Extracts and processes the MongoDB configuration parameters from
+        input arguments.
+        """
+        # Re-mapped variables from ANSIBLE without prefixes
+        self.public_ips = self.inputargs["mongodb_public_ips"].split(",")
+        self.private_ips = self.inputargs["mongodb_private_ips"].split(",")
+        self.config_ips = self.inputargs["mongodb_config_ips"].split(",")
+        self.config_network = self.inputargs["mongodb_config_network"]
+
+        # Get MongoDB version or default to 7.0.0
+        self.mongodb_version = self.inputargs.get("mongodb_version", "7.0.0")
+        
+        # Get storage engine or default to wiredTiger
+        self.storage_engine = self.inputargs.get("mongodb_storage_engine", "wiredTiger")
+        
+        # Get MongoDB port or default to 27017
+        self.mongodb_port = self.inputargs.get("mongodb_port", "27017")
+
+        self.clobber = self.inputargs.get("clobber", True)
+        if self.clobber in ["None", None, 'none']:
+            self.clobber = None
+
+        try:
+            self.main_public_ip, self.main_private_ip = self.inputargs["mongodb_main_ips"].split(",")
+        except (KeyError, ValueError) as e:
+            self.main_public_ip = self.public_ips[0]
+            self.main_private_ip = self.private_ips[0]
+            self.logger.warn(f"ANS_VAR_/mongodb_main_ips not set: {e}")
+
+        self.private_secondaries = self.private_ips[1:] if len(self.private_ips) > 1 else None
+        self.config_file_path = f"{self.exec_dir}/hosts"
+        self.config_file = open(self.config_file_path, "w")
+
+    def _write_key_to_file(self, key, filepath, permission=0o400):
+        """
+        Write a base64-encoded value from inputargs to a file with specified permissions.
+
+        Args:
+            key: The key to look up in self.inputargs
+            filepath: The path where the file should be written
+            permission: File permissions to set (default: 0o400, read-only for owner)
+
+        Returns:
+            The filepath if successful, None otherwise
+        """
+        # Return early if the key doesn't exist or has no value
+        if not self.inputargs.get(key):
+            return None
+
+        # Create directory structure if it doesn't exist
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+
+        # Decode the base64 value and write to file
+        decoded_content = b64_decode(self.inputargs[key])
+        with open(filepath, "w") as output_file:
+            output_file.write(decoded_content)
+
+        # Set file permissions and copy to shared location
+        os.chmod(filepath, permission)
+        self.copy_file_to_share(filepath)
+
+        return filepath
+
+    def _create_mongodb_keyfile(self):
+        """
+        Create the MongoDB keyfile for authentication.
+        
+        Writes the MongoDB keyfile to the specified location with proper permissions.
+        """
+        filepath = os.path.join(
+            self.exec_dir,
+            "roles",
+            "init_replica_nodes",
+            "files",
+            "mongodb_keyfile"
+        )
+
+        self._write_key_to_file(
+            key="mongodb_keyfile",
+            filepath=filepath,
+            permission=0o400
+        )
+
+    def _create_mongodb_pem(self):
+        """
+        Create the MongoDB SSL/TLS certificate.
+        
+        Writes the MongoDB PEM file to the specified location with proper permissions.
+        """
+        filepath = os.path.join(
+            self.exec_dir,
+            "roles",
+            "init_replica_nodes",
+            "files",
+            "mongodb.pem"
+        )
+
+        self._write_key_to_file(
+            key="mongodb_pem",
+            filepath=filepath,
+            permission=0o400
+        )
+        
+    def _create_ssh_key(self):
+        """
+        Create the SSH private key for Ansible.
+        
+        Writes the SSH key to the specified location with proper permissions.
+        """
+        filepath = os.path.join(
+            self.exec_dir,
+            "ssh_key.pem"
+        )
+
+        self._write_key_to_file(
+            key="private_key",
+            filepath=filepath,
+            permission=0o400
+        )
+
+    def _add_public(self):
+        """Add public IPs to the Ansible hosts file."""
+        self.config_file.write('[public]\n')
+        for ip in self.public_ips:
+            self.config_file.write(f"{ip}\n")
+        self.config_file.write("\n")
+
+    def _add_private(self):
+        """Add private IPs to the Ansible hosts file."""
+        self.config_file.write('[private]\n')
+        for ip in self.private_ips:
+            self.config_file.write(f"{ip}\n")
+        self.config_file.write("\n")
+
+    def _add_config_ips(self):
+        """Add configuration IPs to the Ansible hosts file."""
+        self.config_file.write('[configuration]\n')
+        for ip in self.config_ips:
+            self.config_file.write(f"{ip}\n")
+        self.config_file.write("\n")
+
+    def _add_config_network(self):
+        """Add configuration network to the Ansible hosts file."""
+        self.config_file.write('[config_network]\n')
+        self.config_file.write(f"{self.config_network}\n\n")
+
+    def _add_main(self):
+        """Add main replica node IPs to the Ansible hosts file."""
+        self.config_file.write('[public_main]\n')
+        self.config_file.write(f"{self.main_public_ip}\n\n")
+        
+        self.config_file.write('[private_main]\n')
+        self.config_file.write(f"{self.main_private_ip}\n\n")
+
+    def _add_secondaries(self):
+        """Add secondary replica node IPs to the Ansible hosts file."""
+        if not self.private_secondaries:
+            return
+
+        self.config_file.write('[private-secondaries]\n')
+        for ip in self.private_secondaries:
+            self.config_file.write(f"{ip}\n")
+        self.config_file.write("\n")
+        
+    def _update_group_vars(self):
+        """
+        Update group_vars/all.yml with MongoDB 7.0 specific settings.
+        
+        Modifies existing template variables with MongoDB 7.0 specific values.
+        """
+        # Calculate WiredTiger cache size - default to 50% of available memory or 1GB
+        wt_cache_size = self.inputargs.get("mongodb_wt_cache_size_gb", "1")
+        
+        # Add MongoDB 7.0 specific variables to templating
+        additional_vars = {
+            "mongodb_version": self.mongodb_version,
+            "mongodb_storage_engine": self.storage_engine,
+            "mongodb_port": self.mongodb_port,
+            "mongodb_wt_cache_size_gb": wt_cache_size,
+            "mongodb_featureCompatibilityVersion": self.mongodb_version.split('.')[0] + '.0'
+        }
+        
+        # Update inputargs with these variables
+        for key, value in additional_vars.items():
+            if f"ANS_VAR_{key}" not in self.inputargs:
+                self.inputargs[f"ANS_VAR_{key}"] = value
+
+    def create(self):
+        """
+        Create the complete Ansible host configuration.
+        
+        Generates the full Ansible hosts file with all necessary sections and
+        creates MongoDB keyfile and certificate.
+        """
+        self._set_vars()
+        
+        # Update group_vars with MongoDB 7.0 specific settings
+        self._update_group_vars()
+
+        # Update and clobber vars all and hosts
+        self.templify(clobber=True)
+
+        # Create MongoDB and SSH files
+        self._create_mongodb_keyfile()
+        self._create_mongodb_pem()
+        self._create_ssh_key()
+        
+        # Write Ansible hosts file sections
+        self._add_public()
+        self._add_private()
+        self._add_config_ips()
+        self._add_config_network()
+        self._add_main()
+        self._add_secondaries()
+        
+        self.config_file.close()
+        self.logger.debug(f"Created Ansible host config file {self.config_file_path}")
+
+
+def usage():
+    """Display usage information for the script."""
+    print("""
+Usage:
+------
+script + environmental variables
+or
+script + json_input (as argument)
+
+Environmental variables:
+    create:
+        JOB_INSTANCE_ID
+        SCHEDULE_ID
+        RUN_ID
+        ANS_VAR_private_key
+        ANS_VAR_mongodb_keyfile
+        ANS_VAR_mongodb_pem
+        ANS_VAR_mongodb_main_ips
+        ANS_VAR_mongodb_config_network
+        ANS_VAR_mongodb_public_ips
+        ANS_VAR_mongodb_private_ips
+        ANS_VAR_mongodb_config_ips
+        ANS_VAR_mongodb_version (default: 7.0.0)
+        ANS_VAR_mongodb_storage_engine (default: wiredTiger)
+        ANS_VAR_mongodb_port (default: 27017)
+        ANS_VAR_mongodb_wt_cache_size_gb (default: 1)
+        METHOD
+    """)
+    exit(4)
+
+
+if __name__ == '__main__':
+    try:
+        json_input = sys.argv[1]
+    except IndexError:
+        json_input = None
+
+    main = Main()
+    main.set_inputargs(add_app_vars=True)
+
+    if main.inputargs.get("method", "create") == "create":
+        main.check_required_inputargs(keys=[
+            "mongodb_public_ips", 
+            "mongodb_private_ips", 
+            "mongodb_config_ips"
+        ])
+        main.create()
+    else:
+        usage()
+        print(f'Method "{main.inputargs.get("method", "create")}" not supported!')
+        exit(4)

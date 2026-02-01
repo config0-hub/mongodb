@@ -1,0 +1,260 @@
+---
+- name: Check Ubuntu version
+  set_fact:
+    mongodb_repo_version: "{{ '6.0' if ansible_distribution_release == 'noble' else '7.0' }}"
+  become: true
+
+- name: Display selected MongoDB version
+  debug:
+    msg: "Using MongoDB {{ mongodb_repo_version }} for {{ ansible_distribution }} {{ ansible_distribution_release }}"
+
+- name: Update system packages
+  apt:
+    update_cache: yes
+  become: true
+  register: apt_update
+  ignore_errors: yes
+
+- name: Install dependencies
+  apt:
+    name: 
+      - gnupg
+      - curl
+      - haveged
+    state: present
+  become: true
+  register: deps_result
+  failed_when: deps_result is failed
+
+- name: Ensure haveged is running for entropy
+  service:
+    name: haveged
+    state: started
+    enabled: yes
+  become: true
+  ignore_errors: yes
+
+- name: Remove existing MongoDB repository files
+  shell: rm -f /etc/apt/sources.list.d/mongodb*.list
+  become: true
+  changed_when: false
+
+- name: Download MongoDB GPG key and add to keyring
+  shell: |
+    set -e
+    curl -sL https://www.mongodb.org/static/pgp/server-{{ mongodb_repo_version }}.asc | \
+    gpg --dearmor | \
+    sudo tee /usr/share/keyrings/mongodb-server-{{ mongodb_repo_version }}.gpg > /dev/null
+  args:
+    creates: "/usr/share/keyrings/mongodb-server-{{ mongodb_repo_version }}.gpg"
+  become: true
+  register: gpg_result
+  failed_when: gpg_result.rc != 0
+
+- name: Add MongoDB repository
+  shell: |
+    echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-{{ mongodb_repo_version }}.gpg ] https://repo.mongodb.org/apt/ubuntu {{ ansible_distribution_release | regex_replace('noble', 'jammy') }}/mongodb-org/{{ mongodb_repo_version }} multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-{{ mongodb_repo_version }}.list
+  become: true
+  register: repo_result
+  failed_when: repo_result.rc != 0
+
+- name: Update package lists (with retries)
+  shell: apt-get update
+  become: true
+  register: apt_update_after_repo
+  retries: 3
+  delay: 5
+  until: apt_update_after_repo.rc == 0
+  ignore_errors: yes
+
+- name: Install MongoDB packages
+  apt:
+    name: mongodb-org
+    state: present
+    update_cache: yes
+  become: true
+  register: mongodb_install
+  retries: 3
+  delay: 5
+  until: mongodb_install is success
+
+- name: Create MongoDB configuration directory
+  file:
+    path: "{{ mongodb_dbpath | default('/var/lib/mongodb') }}"
+    state: directory
+    owner: "{{ mongodb_user | default('mongodb') }}"
+    group: "{{ mongodb_group | default('mongodb') }}"
+    mode: 0755
+    recurse: yes
+  become: true
+
+- name: Create MongoDB log directory
+  file:
+    path: "{{ mongodb_logpath | dirname | default('/var/log/mongodb') }}"
+    state: directory
+    owner: "{{ mongodb_user | default('mongodb') }}"
+    group: "{{ mongodb_group | default('mongodb') }}"
+    mode: 0755
+  become: true
+
+- name: Create MongoDB security directory
+  file:
+    path: "/etc/mongodb/security"
+    state: directory
+    owner: "{{ mongodb_user | default('mongodb') }}"
+    group: "{{ mongodb_group | default('mongodb') }}"
+    mode: 0755
+  become: true
+
+- name: Create MongoDB keyfile from variable
+  copy:
+    content: "{{ mongodb_keyfile | b64decode }}"
+    dest: "/etc/mongodb/security/keyfile"
+    owner: "{{ mongodb_user | default('mongodb') }}"
+    group: "{{ mongodb_group | default('mongodb') }}"
+    mode: 0600
+  become: true
+  when: mongodb_keyfile is defined and mongodb_keyfile | length > 0
+
+- name: Create MongoDB PEM from variable
+  copy:
+    content: "{{ mongodb_pem | b64decode }}"
+    dest: "/etc/mongodb/security/mongodb.pem"
+    owner: "{{ mongodb_user | default('mongodb') }}"
+    group: "{{ mongodb_group | default('mongodb') }}"
+    mode: 0600
+  become: true
+  when: mongodb_pem is defined and mongodb_pem | length > 0
+
+- name: Create MongoDB configuration file
+  template:
+    src: mongod.conf.j2
+    dest: /etc/mongod.conf
+    owner: root
+    group: root
+    mode: 0644
+  become: true
+  register: config_update
+  notify: restart mongodb
+
+- name: Fix MongoDB environment variables in systemd service
+  lineinfile:
+    path: /usr/lib/systemd/system/mongod.service
+    regexp: '^Environment="MONGODB_CONFIG_OVERRIDE_NOFORK=1"'
+    state: absent
+  become: true
+  register: fix_systemd
+  notify: restart mongodb
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes
+  become: true
+  when: fix_systemd is changed
+
+- name: Stop MongoDB service (if running)
+  service:
+    name: mongod
+    state: stopped
+  become: true
+  ignore_errors: yes
+
+- name: Check MongoDB log directory permissions
+  file:
+    path: "{{ mongodb_logpath | dirname | default('/var/log/mongodb') }}"
+    state: directory
+    owner: "{{ mongodb_user | default('mongodb') }}"
+    group: "{{ mongodb_group | default('mongodb') }}"
+    mode: 0755
+  become: true
+
+- name: Check if mongod.log exists
+  stat:
+    path: "{{ mongodb_logpath | default('/var/log/mongodb/mongod.log') }}"
+  register: log_file
+  become: true
+
+- name: Fix mongod.log permissions if exists
+  file:
+    path: "{{ mongodb_logpath | default('/var/log/mongodb/mongod.log') }}"
+    owner: "{{ mongodb_user | default('mongodb') }}"
+    group: "{{ mongodb_group | default('mongodb') }}"
+    mode: 0644
+  when: log_file.stat.exists
+  become: true
+
+- name: Start and enable MongoDB service
+  service:
+    name: mongod
+    state: started
+    enabled: yes
+  become: true
+  register: start_result
+  retries: 3
+  delay: 5
+  until: start_result is success
+
+- name: Wait for MongoDB to be available
+  wait_for:
+    host: 127.0.0.1
+    port: 27017
+    delay: 5
+    timeout: 60
+  become: true
+
+- name: Verify MongoDB installation
+  shell: mongod --version
+  become: true
+  register: version_check
+  changed_when: false
+  failed_when: false
+
+- name: Show MongoDB verification results
+  debug:
+    msg: "MongoDB installation verified successfully. Version: {{ version_check.stdout_lines[0] if version_check.rc == 0 else 'MongoDB verification failed!' }}"
+
+- name: Get MongoDB service status
+  shell: systemctl status mongod || true
+  become: true
+  register: status_result
+  changed_when: false
+  failed_when: false
+
+- name: Show MongoDB service status
+  debug:
+    msg: "{{ status_result.stdout_lines | default(['Service status check failed']) }}"
+
+# The following tasks are for debugging purposes if MongoDB fails to start
+- name: Check MongoDB logs if service fails
+  shell: "tail -n 50 {{ mongodb_logpath | default('/var/log/mongodb/mongod.log') }}"
+  become: true
+  register: mongodb_logs
+  when: start_result is failed or "failed" in status_result.stdout | default('')
+  ignore_errors: yes
+  changed_when: false
+
+- name: Display MongoDB logs
+  debug:
+    msg: "{{ mongodb_logs.stdout_lines | default(['No logs available']) }}"
+  when: mongodb_logs is defined and mongodb_logs.stdout is defined
+
+- name: Ensure MongoDB data directory exists with correct permissions
+  file:
+    path: "{{ mongodb_dbpath | default('/var/lib/mongodb') }}"
+    state: directory
+    owner: "{{ mongodb_user | default('mongodb') }}"
+    group: "{{ mongodb_group | default('mongodb') }}"
+    mode: 0755
+    recurse: yes
+  become: true
+
+- name: Check SELinux status (if applicable)
+  shell: getenforce || echo "SELinux not installed"
+  register: selinux_status
+  changed_when: false
+  ignore_errors: yes
+  
+- name: Show SELinux status
+  debug:
+    msg: "SELinux status: {{ selinux_status.stdout }}"
+  when: selinux_status is defined and selinux_status.stdout is defined

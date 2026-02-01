@@ -1,0 +1,29 @@
+---
+os_user: ubuntu
+mongodb_admin_user: main
+mongodb_admin_pass: admin123
+mongodb_version: 7.0.0  # Updated to MongoDB 7.0
+mongodb_port: 27017
+mongodb_bind_ip: 0.0.0.0
+mongodb_dbpath: /var/lib/mongodb
+mongodb_logpath: /var/log/mongodb/mongod.log
+mongodb_security_path: /etc/mongodb/security
+mongodb_keyfile_path: /etc/mongodb/security/mongodb_keyfile
+mongodb_pem_path: /etc/mongodb/security/mongo.pem
+mongodb_servicefile_path: /etc/systemd/system/mongodb.service
+mongodb_servicefile: files/mongodb.service
+mongodb_storage_engine: "wiredTiger"  # WiredTiger is now the default
+mongodb_profiling_threshold: 100
+mongodb_profiling_mode: "off"
+mongodb_enable_localhost_auth_bypass: true
+mongodb_is_arbiter: false
+mongodb_authorization_enabled: true
+# New parameters for MongoDB 7.0
+mongodb_wt_cache_size_gb: 1  # WiredTiger cache size in GB (adjust based on available memory)
+mongodb_featureCompatibilityVersion: "7.0"  # Set feature compatibility version
+mongodb_tls_mode: "disabled"  # Options: disabled, allowTLS, preferTLS, requireTLS
+mongodb_backup_enabled: false  # Whether to configure automated backups
+mongodb_backup_dir: /var/backups/mongodb  # Directory for backups if enabled
+mongodb_enable_free_monitoring: false  # Whether to enable the free cloud monitoring
+mongodb_disable_javascript_jit: false  # Disable JavaScript JIT for security (true = more secure)
+mongodb_network_compression: "snappy"  # Network compression: snappy, zlib, zstd, or disabled

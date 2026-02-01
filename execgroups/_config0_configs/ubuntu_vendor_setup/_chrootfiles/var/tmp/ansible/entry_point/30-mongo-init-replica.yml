@@ -1,0 +1,38 @@
+---
+- name: Initialize MongoDB 7.0 Replica Set
+  hosts: config_network
+  remote_user: "{{ os_user }}"
+  become: yes
+  become_method: sudo
+  gather_facts: yes  # Changed to 'yes' to collect system information
+  roles:
+    - role: ../roles/init_replica_nodes
+      vars:
+        mongodb_init_timeout: 120  # Seconds to wait for replica set initialization
+  
+  tasks:
+    - name: Wait for replica set to become fully initialized
+      shell: >
+        mongosh 
+        --tls 
+        --tlsAllowInvalidCertificates 
+        --host "localhost:{{ mongodb_port }}" 
+        -u "{{ mongodb_admin_user }}" 
+        -p "{{ mongodb_admin_pass }}" 
+        --authenticationDatabase "admin" 
+        --eval "rs.status().ok"
+      register: rs_status
+      until: rs_status.stdout | regex_search('1')
+      retries: 10
+      delay: 6
+      changed_when: false
+      ignore_errors: yes
+  
+    - name: Display replica set status
+      debug:
+        msg: "Replica set initialization completed successfully"
+      when: rs_status.stdout | regex_search('1')
+  
+  tags:
+    - mongodb_repl
+    - replica_init

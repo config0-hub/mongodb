@@ -1,0 +1,19 @@
+desc: Deploys and configures a MongoDB replica set cluster on AWS with SSL/TLS security and keyfile authentication.
+release: 0.0.1
+author: Gary Leong <gary@config0.com>
+license: GNU General Public License v3.0
+categories: 
+   - database
+   - mongodb
+   - replica
+   - ansible
+   - bastion
+tags:
+   - bastion
+   - ansible
+   - mongodb
+   - replica
+   - vms
+   - database
+   - cloud
+   - public_cloud
