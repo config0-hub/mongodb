@@ -1,0 +1,25 @@
+[Unit]
+Description=MongoDB Database Server
+Documentation=https://docs.mongodb.org/manual
+After=network.target
+ 
+[Service]
+User=mongodb
+Group=mongodb
+ExecStart=/usr/bin/mongod --quiet --config /etc/mongod.conf
+# Recommended limits from MongoDB documentation
+LimitFSIZE=infinity
+LimitCPU=infinity
+LimitAS=infinity
+LimitNOFILE=64000
+LimitNPROC=64000
+# Restart the service if it exits
+Restart=always
+# Even if system is stalled, stop mongodb
+TimeoutStopSec=120
+# Give up restarting if mongodb stops too many times
+StartLimitIntervalSec=60
+StartLimitBurst=3
+ 
+[Install]
+WantedBy=multi-user.target

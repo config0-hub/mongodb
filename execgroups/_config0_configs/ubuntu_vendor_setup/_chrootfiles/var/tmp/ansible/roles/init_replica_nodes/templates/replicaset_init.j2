@@ -1,0 +1,58 @@
+// MongoDB 7.0 replica set initialization
+try {
+  // Initialize the replica set
+  rs.initiate();
+  
+  // Wait for the replica set to initialize (better approach than fixed sleep)
+  let attempts = 0;
+  let maxAttempts = 30;
+  let initialized = false;
+  
+  while (!initialized && attempts < maxAttempts) {
+    try {
+      let status = rs.status();
+      if (status.ok && status.members && status.members[0].stateStr === "PRIMARY") {
+        initialized = true;
+        print("Replica set initialized successfully.");
+      } else {
+        print("Waiting for replica set to initialize... (" + (attempts + 1) + "/" + maxAttempts + ")");
+        sleep(1000);
+      }
+    } catch (e) {
+      print("Error checking replica set status: " + e);
+      sleep(1000);
+    }
+    attempts++;
+  }
+  
+  if (!initialized) {
+    throw new Error("Failed to initialize replica set after " + maxAttempts + " attempts");
+  }
+  
+  // Create admin user with root privileges
+  db.getSiblingDB("admin").createUser({
+    user: "{{mongodb_admin_user}}",
+    pwd: "{{mongodb_admin_pass}}",
+    roles: [
+      {role: "root", db: "admin"}
+    ]
+  });
+  
+  print("Admin user '{{mongodb_admin_user}}' created successfully.");
+  
+  // Print final status
+  printjson(rs.status());
+  
+} catch (e) {
+  print("Error during initialization: " + e);
+  // Check if the error is because the replica set is already initialized
+  try {
+    let status = rs.status();
+    if (status.ok) {
+      print("Replica set appears to be already initialized.");
+      printjson(status);
+    }
+  } catch (statusError) {
+    print("Failed to get replica set status: " + statusError);
+  }
+}

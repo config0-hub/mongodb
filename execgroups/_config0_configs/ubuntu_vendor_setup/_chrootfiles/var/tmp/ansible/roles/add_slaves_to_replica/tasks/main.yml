@@ -1,0 +1,32 @@
+---
+- name: Generate replica set node addition script
+  vars:
+    private_replicas: "{{ groups['private-secondaries'] }}"
+  template:
+    src: replicaset_add_node.j2
+    dest: /tmp/replicaset_add_node.js
+    mode: '0600'  # Secure permissions since it contains credentials
+
+- name: Execute the script to add secondary nodes to replica set
+  shell: >
+    mongosh 
+    --tls 
+    --tlsAllowInvalidCertificates 
+    --host "localhost:{{ mongodb_port }}" 
+    -u "{{ mongodb_admin_user }}" 
+    -p "{{ mongodb_admin_pass }}" 
+    --authenticationDatabase "admin" 
+    < /tmp/replicaset_add_node.js
+  register: add_node_result
+  changed_when: add_node_result.rc == 0 and "Successfully added" in add_node_result.stdout
+  failed_when: add_node_result.rc != 0 and ("already part of the replica set" not in add_node_result.stdout and "Connection refused" not in add_node_result.stderr)
+  retries: 3
+  delay: 5
+  until: add_node_result.rc == 0 or "already part of the replica set" in add_node_result.stdout
+  no_log: true  # Don't log output as it might contain sensitive information
+
+- name: Remove temporary script file
+  file:
+    path: /tmp/replicaset_add_node.js
+    state: absent
+  changed_when: false

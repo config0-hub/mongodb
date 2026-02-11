@@ -1,0 +1,321 @@
+#!/usr/bin/env python3
+"""
+OpenSSL resource handler for creating SSL and symmetric keys.
+
+This module provides functionality to create SSL certificates and symmetric
+keys for applications like MongoDB using OpenSSL.
+
+Copyright 2025 Gary Leong <gary@config0.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
+import os
+import sys
+import subprocess
+
+from config0_publisher.utilities import OnDiskTmpDir
+from config0_publisher.loggerly import Config0Logger
+from config0_publisher.resource.manage import ResourceCmdHelper
+
+
+class Main(ResourceCmdHelper):
+    """
+    Main class for creating SSL certificates and symmetric keys.
+    
+    This class provides methods to generate SSL certificates and symmetric
+    keys using OpenSSL, primarily for MongoDB applications.
+    """
+
+    def __init__(self, **kwargs):
+        """
+        Initialize the OpenSSL handler with certificate parameters.
+        
+        Args:
+            country (str): Country code for the certificate (default: "US")
+            country_state (str): State for the certificate (default: "California")
+            city (str): City for the certificate (default: "SanFrancisco")
+            cert_cn (str): Common Name for the certificate (default: "www.selfsigned.com")
+            cert_length (str): Number of days the certificate is valid (default: "1024")
+            cert_bits (str): RSA key bit length (default: "2048")
+        """
+        super().__init__()
+        self.classname = 'OpenSSL'
+        self.logger = Config0Logger(self.classname, logcategory="cloudprovider")
+        self.logger.debug(f"Instantiating {self.classname}")
+        
+        # Certificate parameters
+        self.country = kwargs.get("country", "US")
+        self.country_state = kwargs.get("country_state", "California")
+        self.city = kwargs.get("city", "SanFrancisco")
+        self.cert_cn = kwargs.get("cert_cn", "www.selfsigned.com")
+        self.cert_length = kwargs.get("cert_length", "1024")
+        self.cert_bits = kwargs.get("cert_bits", "2048")
+        
+        # Resource metadata
+        self.application = "mongodb"
+        self.provider = "openssl"
+        self.source_method = "shellout"
+        self.encrypt_fields = ["contents"]
+
+    def create_ssl(self):
+        """
+        Create an SSL certificate for MongoDB.
+        
+        Generates a PEM file containing both the certificate and private key,
+        and a separate CA certificate file for MongoDB 7.0.6+ compatibility.
+        
+        Returns:
+            None: Writes the resources to JSON files.
+        """
+        tempdir = OnDiskTmpDir()
+        basedir = os.getcwd()
+        os.chdir(tempdir.get())
+        
+        try:
+            # Generate a CA certificate (self-signed)
+            ca_key_cmd = f'openssl genrsa -out ca.key {self.cert_bits}'
+            self.execute(ca_key_cmd)
+            
+            ca_cert_cmd = (
+                f'openssl req -new -x509 -key ca.key -out ca.pem '
+                f'-subj "/C={self.country}/ST={self.country_state}/L={self.city}/O=MongoDB CA/CN={self.cert_cn} CA" '
+                f'-days {self.cert_length} -sha256'
+            )
+            self.execute(ca_cert_cmd)
+            
+            # Generate server key
+            server_key_cmd = f'openssl genrsa -out mongodb.key {self.cert_bits}'
+            self.execute(server_key_cmd)
+            
+            # Generate CSR
+            csr_cmd = (
+                f'openssl req -new -key mongodb.key -out mongodb.csr '
+                f'-subj "/C={self.country}/ST={self.country_state}/L={self.city}/O=MongoDB/CN={self.cert_cn}" '
+                f'-sha256'
+            )
+            self.execute(csr_cmd)
+            
+            # Sign server CSR with CA
+            sign_cmd = (
+                f'openssl x509 -req -in mongodb.csr -CA ca.pem -CAkey ca.key '
+                f'-CAcreateserial -out mongodb.crt -days {self.cert_length} -sha256'
+            )
+            self.execute(sign_cmd)
+            
+            # Combine key and cert into PEM file for server
+            combine_cmd = 'cat mongodb.key mongodb.crt > mongodb.pem'
+            self.execute(combine_cmd)
+            
+            # Read the PEM file contents
+            cmd = 'cat mongodb.pem'
+            results = self.execute(cmd)
+            
+            # Read the CA certificate
+            ca_cmd = 'cat ca.pem'
+            ca_results = self.execute(ca_cmd)
+            
+            # Create resource metadata for server certificate+key
+            resource = {
+                "resource_type": "ssl_pem",
+                "application": self.application,
+                "provider": self.provider,
+                "source_method": self.source_method,
+                "encrypt_fields": self.encrypt_fields,
+                "crypt_fields": self.encrypt_fields,
+                "name": f"{self.inputargs['name']}.pem",
+                "country": self.country,
+                "state": self.country_state,
+                "city": self.city,
+                "cn": self.cert_cn,
+                "length": self.cert_length,
+                "bits": self.cert_bits,
+                "contents": results["output"],
+                "no_dependency": True,
+                "tags": ["mongodb", "mongodb.pem", "pem", "ssl", "mongodb7"]
+            }
+            
+            resource['id'] = self.get_hash(resource)
+            resource['_id'] = resource['id']
+            self.write_resource_to_json_file(resource)
+            
+            # Create resource metadata for CA certificate
+            ca_resource = {
+                "resource_type": "ssl_ca",
+                "application": self.application,
+                "provider": self.provider,
+                "source_method": self.source_method,
+                "encrypt_fields": self.encrypt_fields,
+                "crypt_fields": self.encrypt_fields,
+                "name": f"{self.inputargs['name']}_ca.pem",
+                "country": self.country,
+                "state": self.country_state,
+                "city": self.city,
+                "cn": f"{self.cert_cn} CA",
+                "length": self.cert_length,
+                "bits": self.cert_bits,
+                "contents": ca_results["output"],
+                "no_dependency": True,
+                "tags": ["mongodb", "mongodb_ca", "ca", "ssl", "mongodb7"]
+            }
+            
+            ca_resource['id'] = self.get_hash(ca_resource)
+            ca_resource['_id'] = ca_resource['id']
+            self.write_resource_to_json_file(ca_resource)
+            
+        finally:
+            # Ensure cleanup happens even if there's an error
+            os.chdir(basedir)
+            tempdir.delete()
+    
+    def create_ssl_combined(self):
+        """
+        Create a combined SSL certificate for MongoDB.
+        
+        Generates a single PEM file containing the certificate, private key, and CA certificate.
+        This can be used as both certificateKeyFile and CAFile in MongoDB configuration.
+        
+        Returns:
+            None: Writes the resource to a JSON file.
+        """
+        tempdir = OnDiskTmpDir()
+        basedir = os.getcwd()
+        os.chdir(tempdir.get())
+        
+        try:
+            # Generate certificate and key with modern parameters for MongoDB 7.0
+            cmd = (
+                f'openssl req -newkey rsa:{self.cert_bits} -new -x509 '
+                f'-subj "/C={self.country}/ST={self.country_state}/L={self.city}/O=MongoDB/CN={self.cert_cn}" '
+                f'-days {self.cert_length} -nodes -out mongodb.crt -keyout mongodb.key '
+                f'-sha256'  # Use SHA-256 for better security
+            )
+            self.execute(cmd)
+    
+            # Combine into PEM file (certificate first, then key)
+            # This ordering is important for MongoDB to properly read it as both cert and CA
+            cmd = 'cat mongodb.crt mongodb.key > mongodb.pem'
+            self.execute(cmd)
+    
+            # Read the PEM file contents
+            cmd = 'cat mongodb.pem'
+            results = self.execute(cmd)
+            
+            # Create resource metadata
+            resource = {
+                "resource_type": "ssl_pem_combined",
+                "application": self.application,
+                "provider": self.provider,
+                "source_method": self.source_method,
+                "encrypt_fields": self.encrypt_fields,
+                "crypt_fields": self.encrypt_fields,
+                "name": f"{self.inputargs['name']}.pem",
+                "country": self.country,
+                "state": self.country_state,
+                "city": self.city,
+                "cn": self.cert_cn,
+                "length": self.cert_length,
+                "bits": self.cert_bits,
+                "contents": results["output"],
+                "no_dependency": True,
+                "description": "Combined certificate, key, and CA for MongoDB 7.0.6+",
+                "tags": ["mongodb", "mongodb.pem", "combined_pem", "ssl", "mongodb7"]
+            }
+            
+            resource['id'] = self.get_hash(resource)
+            resource['_id'] = resource['id']
+            self.write_resource_to_json_file(resource)
+            
+        finally:
+            # Ensure cleanup happens even if there's an error
+            os.chdir(basedir)
+            tempdir.delete()
+
+    def create(self):
+        """
+        Create a symmetric key for MongoDB.
+        
+        Generates a random base64-encoded key suitable for MongoDB
+        replica set authentication.
+        
+        Returns:
+            None: Writes the resource to a JSON file.
+        """
+        # MongoDB 7.0 recommended key size
+        cmd = 'openssl rand -base64 756'
+        results = self.execute(cmd)
+
+        # Create resource metadata
+        resource = {
+            "resource_type": "symmetric_key",
+            "application": self.application,
+            "provider": self.provider,
+            "source_method": self.source_method,
+            "encrypt_fields": self.encrypt_fields,
+            "crypt_fields": self.encrypt_fields,
+            "name": f"{self.inputargs['name']}_keyfile",
+            "contents": results["output"],
+            "tags": ["mongodb", "mongodb_key_file", "replica_set_key", "mongodb7"]
+        }
+        
+        resource['id'] = self.get_hash(resource)
+        resource['_id'] = resource['id']
+        self.write_resource_to_json_file(resource)
+
+
+if __name__ == '__main__':
+    try:
+        json_input = sys.argv[1]
+    except IndexError:
+        json_input = None
+
+    main = Main()
+
+    if json_input:
+        main.set_inputargs(json_input=json_input)
+    else:
+        set_env_vars = ["name"]
+        main.set_inputargs(set_env_vars=set_env_vars, add_app_vars=True)
+   
+    method = main.inputargs.get("method")
+
+    if not method:
+        print("method/ENV VARIABLE METHOD is needed")
+        exit(4)
+
+    if method == "create":
+        main.check_required_inputargs(keys=["name"])
+        main.create()
+    elif method == "create_ssl":
+        main.check_required_inputargs(keys=["name"])
+        main.create_ssl()
+    elif method == "create_ssl_combined":
+        main.check_required_inputargs(keys=["name"])
+        main.create_ssl_combined()
+    else:
+        print("""
+Usage:
+------
+script + environmental variables
+or
+script + json_input (as argument)
+
+Environmental variables:
+    create/create_ssl/create_ssl_combined:
+        name (required)
+        JOB_INSTANCE_ID (optional)
+        SCHEDULE_ID (optional)
+        """)
+        print(f'Method "{method}" not supported!')
+        exit(4)

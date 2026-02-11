@@ -1,0 +1,25 @@
+desc: Creates a MongoDB keyfile for secure replication authentication
+release: 0.0.1
+author: Gary Leong <gary@config0.com>
+license: GPL-3.0
+categories: 
+   - database
+   - mongodb
+   - security
+   - tls
+   - ssl
+   - replica
+   - ansible
+tags:
+   - ansible
+   - mongodb
+   - security
+   - keyfile
+   - tls
+   - ssl
+   - replica
+   - vms
+   - database
+   - infrastructure
+   - cloud
+   - public_cloud

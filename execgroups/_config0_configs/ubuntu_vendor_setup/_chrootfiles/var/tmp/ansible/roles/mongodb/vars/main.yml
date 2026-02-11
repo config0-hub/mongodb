@@ -1,0 +1,5 @@
+---
+
+mongodb_service_name: mongod
+mongodb_user: mongodb
+mongodb_group: mongodb
