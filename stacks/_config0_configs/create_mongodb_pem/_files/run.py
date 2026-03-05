@@ -25,12 +25,12 @@ def run(stackargs):
     # Add default variables
     stack.parse.add_required(key="basename")
 
-    # Add shelloutconfig dependencies
-    stack.add_shelloutconfig('config0-publish:::mongodb::create_keys')
+    # Add script dependencies
+    stack.add_script('config0-hub:::mongodb::create_keys')
 
-    # Initialize 
+    # Initialize
     stack.init_variables()
-    stack.init_shelloutconfigs()
+    stack.init_scripts()
 
     env_vars = {
         "NAME": stack.basename,

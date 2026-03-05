@@ -1,4 +1,2 @@
-asset_type: shelloutconfig
-env_vars: []
-shelloutconfigs:
-- config0-publish:::mongodb::create_ansible_replica_hosts
+scripts:
+- config0-hub:::mongodb::create_ansible_replica_hosts.sh

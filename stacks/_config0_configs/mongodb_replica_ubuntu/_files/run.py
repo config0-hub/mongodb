@@ -114,14 +114,14 @@ def run(stackargs):
     stack.parse.add_optional(key="cloud_tags_hash", default='null')
 
     # Add execgroup
-    stack.add_substack("config0-publish:::ebs_volume_attach")
+    stack.add_substack("config0-hub:::aws_storage::ebs_volume_attach")
 
     # Add host groups
-    stack.add_hostgroups("config0-publish:::ubuntu::docker", "install_docker")
-    stack.add_hostgroups("config0-publish:::ansible::ubuntu", "install_python")
-    stack.add_hostgroups("config0-publish:::aws_storage::config_vol", "config_vol")
-    stack.add_hostgroups("config0-publish:::mongodb::ubuntu_vendor_setup", "ubuntu_vendor_setup")
-    stack.add_hostgroups("config0-publish:::mongodb::ubuntu_vendor_init_replica", "ubuntu_vendor_init_replica")
+    stack.add_hostgroups("config0-hub:::ubuntu::docker", "install_docker")
+    stack.add_hostgroups("config0-hub:::ansible::ubuntu", "install_python")
+    stack.add_hostgroups("config0-hub:::aws_storage::config_vol", "config_vol")
+    stack.add_hostgroups("config0-hub:::mongodb::ubuntu_vendor_setup", "ubuntu_vendor_setup")
+    stack.add_hostgroups("config0-hub:::mongodb::ubuntu_vendor_init_replica", "ubuntu_vendor_init_replica")
 
     # Initialize 
     stack.init_variables()

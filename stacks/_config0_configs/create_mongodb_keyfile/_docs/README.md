@@ -12,8 +12,8 @@ This stack creates a MongoDB keyfile for MongoDB replication. It provides a secu
 
 ## Dependencies
 
-### Shelloutconfigs
-- [config0-publish:::mongodb::create_keys](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/shelloutconfigs/config0-publish/mongodb/create_keys/default)
+### Scripts
+- [config0-hub:::mongodb::create_keys](http://config0.http.redirects.s3-website-us-east-1.amazonaws.com/assets/scripts/config0-hub/mongodb/create_keys/default)
 
 ## License
 <pre>

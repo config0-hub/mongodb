@@ -42,13 +42,13 @@ This stack automates the deployment of a MongoDB replica set in AWS. It creates 
 ## Dependencies
 
 ### Substacks
-- [config0-publish:::ec2_ubuntu](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/ec2_ubuntu)
-- [config0-publish:::create_mongodb_pem](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/create_mongodb_pem)
-- [config0-publish:::create_mongodb_keyfile](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/create_mongodb_keyfile)
-- [config0-publish:::mongodb_replica_ubuntu](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/mongodb_replica_ubuntu)
-- [config0-publish:::delete_resource](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/delete_resource)
-- [config0-publish:::new_ec2_ssh_key](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/new_ec2_ssh_key)
-- [config0-publish:::config0_core::output_resource_to_ui](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/config0_core/output_resource_to_ui)
+- [config0-hub:::ubuntu::ec2_ubuntu](https://api-app.config0.com/web_api/v1.0/stacks/config0-hub/ec2_ubuntu)
+- [config0-hub:::mongodb::create_mongodb_pem](https://api-app.config0.com/web_api/v1.0/stacks/config0-hub/create_mongodb_pem)
+- [config0-hub:::mongodb::create_mongodb_keyfile](https://api-app.config0.com/web_api/v1.0/stacks/config0-hub/create_mongodb_keyfile)
+- [config0-hub:::mongodb::mongodb_replica_ubuntu](https://api-app.config0.com/web_api/v1.0/stacks/config0-hub/mongodb_replica_ubuntu)
+- [config0-hub:::config0_core::delete_resource](https://api-app.config0.com/web_api/v1.0/stacks/config0-hub/delete_resource)
+- [config0-hub:::aws::new_ec2_ssh_key](https://api-app.config0.com/web_api/v1.0/stacks/config0-hub/new_ec2_ssh_key)
+- [config0-hub:::config0_core::output_resource_to_ui](https://api-app.config0.com/web_api/v1.0/stacks/config0-hub/config0_core/output_resource_to_ui)
 
 ## License
 <pre>

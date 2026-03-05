@@ -39,17 +39,17 @@ This stack automates the deployment of a MongoDB replica set cluster on AWS. It 
 ## Dependencies
 
 ### Substacks
-- [config0-publish:::ebs_volume_attach](https://api-app.config0.com/web_api/v1.0/stacks/config0-publish/ebs_volume_attach)
+- [config0-hub:::aws_storage::ebs_volume_attach](https://api-app.config0.com/web_api/v1.0/stacks/config0-hub/ebs_volume_attach)
 
 ### Execgroups
-- [config0-publish:::ubuntu::docker](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-publish/ubuntu/docker)
-- [config0-publish:::ansible::ubuntu](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-publish/ansible/ubuntu)
-- [config0-publish:::aws_storage::config_vol](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-publish/aws_storage/config_vol)
-- [config0-publish:::mongodb::ubuntu_vendor_setup](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-publish/mongodb/ubuntu_vendor_setup)
-- [config0-publish:::mongodb::ubuntu_vendor_init_replica](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-publish/mongodb/ubuntu_vendor_init_replica)
+- [config0-hub:::ubuntu::docker](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-hub/ubuntu/docker)
+- [config0-hub:::ansible::ubuntu](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-hub/ansible/ubuntu)
+- [config0-hub:::aws_storage::config_vol](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-hub/aws_storage/config_vol)
+- [config0-hub:::mongodb::ubuntu_vendor_setup](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-hub/mongodb/ubuntu_vendor_setup)
+- [config0-hub:::mongodb::ubuntu_vendor_init_replica](https://api-app.config0.com/web_api/v1.0/exec/groups/config0-hub/mongodb/ubuntu_vendor_init_replica)
 
-### Shelloutconfigs
-No shelloutconfigs explicitly defined in the code.
+### Scripts
+No scripts explicitly defined in the code.
 
 ## License
 <pre>
