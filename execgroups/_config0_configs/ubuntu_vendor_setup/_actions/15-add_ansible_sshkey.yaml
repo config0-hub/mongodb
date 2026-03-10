@@ -1,2 +1,2 @@
 scripts:
-- config0-hub:::ansible::write_ssh_key.sh
+- config0-hub:::ansible::write_ssh_key
