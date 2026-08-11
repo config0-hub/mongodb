@@ -20,10 +20,9 @@ def _get_ssh_key(stack):
         "must_exists": True,
         "resource_type": "ssh_key_pair",
         "name": stack.ssh_key_name,
-        "serialize": True,
         "serialize_fields": ["private_key"]
     }
-    return stack.get_resource(decrypt=True, **_lookup)["private_key"]
+    return stack.get_resource(**_lookup)["private_key"]
 
 def _get_mongodb_pem(stack):
     _lookup = {
@@ -31,10 +30,9 @@ def _get_mongodb_pem(stack):
         "resource_type": "ssl_pem_combined",
         "provider": "openssl",
         "name": f"{stack.mongodb_cluster}.pem",
-        "serialize": True,
         "serialize_fields": ["contents"]
     }
-    return stack.get_resource(decrypt=True, **_lookup)["contents"]
+    return stack.get_resource(**_lookup)["contents"]
 
 # lookup mongodb keyfile needed for secure mongodb replication
 def _get_mongodb_keyfile(stack):
@@ -43,10 +41,9 @@ def _get_mongodb_keyfile(stack):
         "provider": "openssl",
         "resource_type": "symmetric_key",
         "name": f"{stack.mongodb_cluster}_keyfile",
-        "serialize": True,
         "serialize_fields": ["contents"]
     }
-    return stack.get_resource(decrypt=True, **_lookup)["contents"]
+    return stack.get_resource(**_lookup)["contents"]
 
 def _get_mongodb_hosts(stack):
     public_ips = []
@@ -65,7 +62,7 @@ def _get_mongodb_hosts(stack):
         _lookup["hostname"] = mongodb_host
         _host_info = list(stack.get_resource(**_lookup))[0]
 
-        # insert volume_name 
+        # insert volume_name
         # ref 45304958324
         _volume_name = f"{mongodb_host}-{stack.volume_mountpoint}".replace("/", "-").replace(".", "-")
         _host_info["volume_name"] = _volume_name
@@ -75,10 +72,10 @@ def _get_mongodb_hosts(stack):
 
         stack.logger.debug_highlight(f'mongo hostname {mongodb_host}, found public_ip "{_host_info["public_ip"]}"')
 
-        if _host_info["public_ip"] not in public_ips: 
+        if _host_info["public_ip"] not in public_ips:
             public_ips.append(_host_info["public_ip"])
 
-        if _host_info["private_ip"] not in private_ips: 
+        if _host_info["private_ip"] not in private_ips:
             private_ips.append(_host_info["private_ip"])
 
     return mongodb_hosts_info, public_ips, private_ips
@@ -123,7 +120,7 @@ def run(stackargs):
     stack.add_hostgroups("config0-hub:::mongodb::ubuntu_vendor_setup", "ubuntu_vendor_setup")
     stack.add_hostgroups("config0-hub:::mongodb::ubuntu_vendor_init_replica", "ubuntu_vendor_init_replica")
 
-    # Initialize 
+    # Initialize
     stack.init_variables()
     stack.init_execgroups()
     stack.init_hostgroups()
@@ -258,7 +255,7 @@ def run(stackargs):
     stack.add_groups_to_host(**inputargs)
 
     # mongo install single step
-    human_description = f"Install MongoDb"
+    human_description = "Install MongoDb"
     env_vars = base_env_vars.copy()
     env_vars["ANS_VAR_exec_ymls"] = "entry_point/20-mongo-setup.yml,entry_point/30-mongo-init-replica.yml,entry_point/40-mongo-add-slave-replica.yml"
     env_vars["DOCKER_ENV_FIELDS"] = ",".join(env_vars.keys())

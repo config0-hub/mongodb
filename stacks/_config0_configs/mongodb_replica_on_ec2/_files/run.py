@@ -68,7 +68,7 @@ class Main(newSchedStack):
 
         self.parse.add_optional(key="bastion_ami_filter",
                                 types = "str",
-                                default="ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*")
+                                default="ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*")
 
         self.parse.add_optional(key="bastion_ami_owner",
                                 default='099720109477')
@@ -204,7 +204,7 @@ class Main(newSchedStack):
         self._set_hostname_base()
         self._set_bastion_hostname()
         self._set_ssh_key_name()
-        
+
         arguments = self.stack.get_tagged_vars(tag="bastion", output="dict")
 
         arguments["size"] = self.stack.instance_type
@@ -338,7 +338,7 @@ class Main(newSchedStack):
 
         arguments["prefix_key"] = "bastion"
         arguments["name"] = self.stack.bastion_hostname
-        arguments["publish_keys_hash"] = self.stack.b64_encode(keys_to_publish)
+        arguments["publish_keys_hash"] = self.stack.serialize(keys_to_publish, json=False)
 
         inputargs = {
             "arguments": arguments,
@@ -364,10 +364,6 @@ class Main(newSchedStack):
         sched.job = "sshkey"
         sched.archive.timeout = 1800
         sched.archive.timewait = 120
-        sched.archive.cleanup.instance = "clear"
-        sched.failure.keep_resources = True
-        sched.conditions.retries = 1
-        sched.automation_phase = "infrastructure"
         sched.human_description = "Create and upload ssh-key"
         sched.on_success = ["pem"]
         self.add_schedule()
@@ -376,9 +372,6 @@ class Main(newSchedStack):
         sched.job = "pem"
         sched.archive.timeout = 1800
         sched.archive.timewait = 120
-        sched.archive.cleanup.instance = "clear"
-        sched.failure.keep_resources = True
-        sched.automation_phase = "infrastructure"
         sched.human_description = "Create and upload MongoDB PEM"
         sched.on_success = ["keyfile"]
         self.add_schedule()
@@ -387,9 +380,6 @@ class Main(newSchedStack):
         sched.job = "keyfile"
         sched.archive.timeout = 1800
         sched.archive.timewait = 120
-        sched.archive.cleanup.instance = "clear"
-        sched.failure.keep_resources = True
-        sched.automation_phase = "infrastructure"
         sched.on_success = ["bastion"]
         sched.human_description = "Create and upload MongoDB keyfile"
         self.add_schedule()
@@ -398,9 +388,6 @@ class Main(newSchedStack):
         sched.job = "bastion"
         sched.archive.timeout = 1800
         sched.archive.timewait = 120
-        sched.archive.cleanup.instance = "clear"
-        sched.failure.keep_resources = True
-        sched.automation_phase = "infrastructure"
         sched.human_description = "Create MongoDB Bastion Config"
         sched.on_success = ["create"]
         self.add_schedule()
@@ -409,9 +396,6 @@ class Main(newSchedStack):
         sched.job = "create"
         sched.archive.timeout = 3600
         sched.archive.timewait = 120
-        sched.archive.cleanup.instance = "clear"
-        sched.failure.keep_resources = True
-        sched.automation_phase = "infrastructure"
         sched.human_description = "Create MongoDB Replica"
         sched.conditions.dependency = ["sshkey", "keyfile", "pem"]
         sched.on_success = ["cleanup"]
@@ -421,9 +405,6 @@ class Main(newSchedStack):
         sched.job = "cleanup"
         sched.archive.timeout = 1800
         sched.archive.timewait = 120
-        sched.archive.cleanup.instance = "clear"
-        sched.failure.keep_resources = True
-        sched.automation_phase = "infrastructure"
         sched.human_description = "Destroy MongoDB Bastion Config"
         self.add_schedule()
 
