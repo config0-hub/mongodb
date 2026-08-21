@@ -26,7 +26,7 @@ def run(stackargs):
     stack.parse.add_required(key="basename")
 
     # Add script dependencies
-    stack.add_script('config0-hub:::mongodb::create_keys')
+    stack.add_script('config0-hub:::mongodb::create_keys', 'create_keys')
 
     # Initialize
     stack.init_variables()
