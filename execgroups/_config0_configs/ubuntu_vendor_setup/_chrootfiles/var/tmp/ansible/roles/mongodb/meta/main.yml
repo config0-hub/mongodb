@@ -1,11 +1,10 @@
 ---
 galaxy_info:
-  description: Installs and configures MongoDB 7.0
-  company: Traveloka
+  description: Installs and configures MongoDB 8.0
   platforms:
   - name: Ubuntu
     versions:
-    - noble  # Ubuntu 24.04 Noble Numbat
+    - noble
   galaxy_tags:
   - database
   - database:nosql

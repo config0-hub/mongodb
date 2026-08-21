@@ -1,5 +1,6 @@
 ---
-
 mongodb_service_name: mongod
 mongodb_user: mongodb
 mongodb_group: mongodb
+# MongoDB 8.0 from the native noble (24.04) repo.
+mongodb_repo_version: "8.0"

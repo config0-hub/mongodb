@@ -1,0 +1,86 @@
+---
+# Localhost-mode port of legacy entry_point/40-mongo-add-slave-replica.yml.
+# mongodb_secondary_ips replaces the legacy private-secondaries inventory group.
+- name: Add secondary nodes to the MongoDB 8.0 replica set
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - ../roles/mongodb/defaults/main.yml
+
+  vars:
+    mongodb_repl_set_name: rs0
+    mongodb_admin_user: "{{ mongodb_username }}"
+    mongodb_admin_pass: "{{ mongodb_password }}"
+
+  pre_tasks:
+    - name: Require replica member inputs
+      ansible.builtin.assert:
+        that:
+          - mongodb_primary_ip is defined
+          - mongodb_primary_ip | length > 0
+          - mongodb_secondary_ips is defined
+          - mongodb_secondary_ips | length > 0
+          - mongodb_username is defined
+          - mongodb_username | length > 0
+          - mongodb_password is defined
+          - mongodb_password | length > 0
+        fail_msg: mongodb_primary_ip, mongodb_secondary_ips, mongodb_username, and mongodb_password are required extra vars
+      no_log: true
+
+    - name: Wait for MongoDB on each secondary
+      ansible.builtin.wait_for:
+        host: "{{ item }}"
+        port: "{{ mongodb_port }}"
+        connect_timeout: 5
+        timeout: 60
+      loop: "{{ mongodb_secondary_ips }}"
+
+  roles:
+    - role: ../roles/add_slaves_to_replica
+
+  post_tasks:
+    - name: Wait for one PRIMARY and every SECONDARY
+      ansible.builtin.command:
+        argv:
+          - mongosh
+          - --quiet
+          - --tls
+          - --tlsAllowInvalidCertificates
+          - --host
+          - "localhost:{{ mongodb_port }}"
+          - --username
+          - "{{ mongodb_admin_user }}"
+          - --password
+          - "{{ mongodb_admin_pass }}"
+          - --authenticationDatabase
+          - admin
+          - --eval
+          - >-
+            const members = rs.status().members;
+            const primary = members.filter(m => m.stateStr === "PRIMARY");
+            const secondaries = members.filter(m => m.stateStr === "SECONDARY");
+            const unhealthy = members.filter(m => !["PRIMARY", "SECONDARY"].includes(m.stateStr));
+            print("NAME\tSTATE\tHEALTH");
+            members.forEach(m => print(m.name + "\t" + m.stateStr + "\t" + m.health));
+            if (members.length !== {{ (mongodb_secondary_ips | length) + 1 }} ||
+                primary.length !== 1 ||
+                primary[0].name !== "{{ mongodb_primary_ip }}:{{ mongodb_port }}" ||
+                secondaries.length !== {{ mongodb_secondary_ips | length }} ||
+                unhealthy.length !== 0) quit(1);
+      register: replica_health
+      changed_when: false
+      retries: 24
+      delay: 5
+      until: replica_health.rc == 0
+      no_log: true
+
+    - name: Display healthy replica set members
+      ansible.builtin.debug:
+        msg: "{{ replica_health.stdout_lines }}"
+
+  tags:
+    - mongodb_repl
+    - add_secondaries

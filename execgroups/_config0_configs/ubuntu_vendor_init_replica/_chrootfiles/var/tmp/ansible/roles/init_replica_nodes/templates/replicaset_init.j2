@@ -1,0 +1,41 @@
+// MongoDB 8.0 replica set bootstrap.
+// This runs once through the localhost exception; later commands authenticate.
+const initiateResult = rs.initiate({
+  _id: "{{ mongodb_repl_set_name }}",
+  members: [
+    {_id: 0, host: "{{ mongodb_primary_ip }}:{{ mongodb_port }}"}
+  ]
+});
+
+if (!initiateResult.ok) {
+  throw new Error("rs.initiate failed: " + EJSON.stringify(initiateResult));
+}
+
+const maxAttempts = Math.ceil({{ mongodb_init_timeout }} / 2);
+let primaryReady = false;
+for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+  const hello = db.getSiblingDB("admin").runCommand({hello: 1});
+  if (!hello.ok) {
+    throw new Error("hello command failed: " + EJSON.stringify(hello));
+  }
+  if (hello.isWritablePrimary && hello.primary === "{{ mongodb_primary_ip }}:{{ mongodb_port }}") {
+    primaryReady = true;
+    break;
+  }
+  print("Waiting for PRIMARY (" + attempt + "/" + maxAttempts + ")");
+  sleep(2000);
+}
+
+if (!primaryReady) {
+  throw new Error("Replica set did not elect the intended PRIMARY within {{ mongodb_init_timeout }} seconds");
+}
+
+db.getSiblingDB("admin").createUser({
+  user: "{{ mongodb_admin_user }}",
+  pwd: "{{ mongodb_admin_pass }}",
+  roles: [
+    {role: "root", db: "admin"}
+  ]
+});
+
+print("Replica set initialized and admin user created.");

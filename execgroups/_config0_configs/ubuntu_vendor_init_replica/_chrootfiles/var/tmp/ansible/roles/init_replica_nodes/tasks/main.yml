@@ -1,0 +1,31 @@
+---
+- name: Initialize replica set and create the first admin user
+  block:
+    - name: Render replica set initialization script
+      ansible.builtin.template:
+        src: replicaset_init.j2
+        dest: /tmp/replicaset_init.js
+        mode: "0600"
+      no_log: true
+
+    # The first user must be created through MongoDB's localhost exception.
+    # All checks after this bootstrap use authenticated TLS connections.
+    - name: Run replica set bootstrap over TLS
+      ansible.builtin.command:
+        argv:
+          - mongosh
+          - --quiet
+          - --tls
+          - --tlsAllowInvalidCertificates
+          - "localhost:{{ mongodb_port }}/admin"
+          - /tmp/replicaset_init.js
+      register: replica_init
+      changed_when: replica_init.rc == 0
+      no_log: true
+
+  always:
+    - name: Remove replica set initialization script
+      ansible.builtin.file:
+        path: /tmp/replicaset_init.js
+        state: absent
+      changed_when: false

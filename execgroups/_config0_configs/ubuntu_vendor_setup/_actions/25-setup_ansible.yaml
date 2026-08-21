@@ -1,2 +1,0 @@
-scripts:
-- config0-hub:::mongodb::create_ansible_replica_hosts

@@ -1,0 +1,42 @@
+---
+- name: Add configured secondary members
+  block:
+    - name: Render replica set member script
+      ansible.builtin.template:
+        src: replicaset_add_node.j2
+        dest: /tmp/replicaset_add_node.js
+        mode: "0600"
+
+    - name: Add missing members over authenticated TLS
+      ansible.builtin.command:
+        argv:
+          - mongosh
+          - --quiet
+          - --tls
+          - --tlsAllowInvalidCertificates
+          - --host
+          - "localhost:{{ mongodb_port }}"
+          - --username
+          - "{{ mongodb_admin_user }}"
+          - --password
+          - "{{ mongodb_admin_pass }}"
+          - --authenticationDatabase
+          - admin
+          - /tmp/replicaset_add_node.js
+      register: add_node_result
+      changed_when: "'Successfully added' in add_node_result.stdout"
+      retries: 3
+      delay: 5
+      until: add_node_result.rc == 0
+      no_log: true
+
+    - name: Display replica set member changes
+      ansible.builtin.debug:
+        msg: "{{ add_node_result.stdout_lines }}"
+
+  always:
+    - name: Remove replica set member script
+      ansible.builtin.file:
+        path: /tmp/replicaset_add_node.js
+        state: absent
+      changed_when: false

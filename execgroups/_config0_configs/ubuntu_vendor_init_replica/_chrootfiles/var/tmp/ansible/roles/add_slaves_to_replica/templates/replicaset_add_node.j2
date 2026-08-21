@@ -1,0 +1,20 @@
+// Add missing replica set members from the localhost-mode IP list.
+{% for private_ip in mongodb_secondary_ips %}
+{
+  const member = "{{ private_ip }}:{{ mongodb_port }}";
+  const memberExists = rs.conf().members.some(configured => configured.host === member);
+
+  if (memberExists) {
+    print("Already configured: " + member);
+  } else {
+    const result = rs.add(member);
+    if (!result.ok) {
+      throw new Error("rs.add failed for " + member + ": " + EJSON.stringify(result));
+    }
+    print("Successfully added: " + member);
+    sleep(3000);
+  }
+}
+{% endfor %}
+
+print("Replica set member update complete.");

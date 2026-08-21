@@ -1,0 +1,70 @@
+---
+# Localhost-mode port of legacy entry_point/30-mongo-init-replica.yml.
+# mongodb_primary_ip, mongodb_username, and mongodb_password arrive as extra vars.
+- name: Initialize the MongoDB 8.0 replica set
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - ../roles/mongodb/defaults/main.yml
+
+  vars:
+    mongodb_repl_set_name: rs0
+    mongodb_admin_user: "{{ mongodb_username }}"
+    mongodb_admin_pass: "{{ mongodb_password }}"
+    mongodb_init_timeout: 120
+
+  pre_tasks:
+    - name: Require replica initialization inputs
+      ansible.builtin.assert:
+        that:
+          - mongodb_primary_ip is defined
+          - mongodb_primary_ip | length > 0
+          - mongodb_username is defined
+          - mongodb_username | length > 0
+          - mongodb_password is defined
+          - mongodb_password | length > 0
+        fail_msg: mongodb_primary_ip, mongodb_username, and mongodb_password are required extra vars
+      no_log: true
+
+  roles:
+    - role: ../roles/init_replica_nodes
+
+  post_tasks:
+    - name: Wait for authenticated PRIMARY status
+      ansible.builtin.command:
+        argv:
+          - mongosh
+          - --quiet
+          - --tls
+          - --tlsAllowInvalidCertificates
+          - --host
+          - "localhost:{{ mongodb_port }}"
+          - --username
+          - "{{ mongodb_admin_user }}"
+          - --password
+          - "{{ mongodb_admin_pass }}"
+          - --authenticationDatabase
+          - admin
+          - --eval
+          - >-
+            const status = rs.status();
+            const primary = status.members.filter(m => m.stateStr === "PRIMARY");
+            print(primary.map(m => m.name + " " + m.stateStr).join("\n"));
+            if (primary.length !== 1 || primary[0].name !== "{{ mongodb_primary_ip }}:{{ mongodb_port }}") quit(1);
+      register: authenticated_primary_status
+      changed_when: false
+      retries: 10
+      delay: 6
+      until: authenticated_primary_status.rc == 0
+      no_log: true
+
+    - name: Display authenticated PRIMARY status
+      ansible.builtin.debug:
+        msg: "{{ authenticated_primary_status.stdout_lines }}"
+
+  tags:
+    - mongodb_repl
+    - replica_init

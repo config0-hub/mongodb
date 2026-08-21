@@ -1,69 +1,58 @@
 # MongoDB Replica Stack
 
 ## Description
-This stack automates the deployment of a MongoDB replica set in AWS. It creates a secure MongoDB cluster with configurable replicas, sets up proper authentication, and uses a bastion host to perform installation on the private subnet.
+
+This stack deploys a MongoDB 8.0 replica set on EC2. It creates the PEM and keyfile resources, creates the replica members in parallel, attaches dedicated data volumes, and configures each member through the SSM EC2 execution engine. It does not create or use an SSH bastion.
+
+The caller supplies the `instance_profile_name`, `managed_tag_key`, and `managed_tag_value` promoted by the `ssm_ec2_exec_eventbridge_install` resource record. The EC2 stack records those values on every server so host orders can target the instance through SSM.
 
 ## Variables
 
 ### Required Variables
+
 | Name | Description | Default |
 |------|-------------|---------|
 | mongodb_cluster | MongoDB cluster name | &nbsp; |
-| bastion_sg_id | Bastion host security group | null |
-| bastion_subnet_ids | Subnets for bastion hosts | null |
+| ssh_key_name | Existing EC2 key pair required by the EC2 stack; not used for configuration transport | &nbsp; |
+| instance_profile_name | Instance profile promoted by the SSM engine install record | &nbsp; |
+| managed_tag_key | Managed tag key promoted by the SSM engine install record | &nbsp; |
+| managed_tag_value | Managed tag value promoted by the SSM engine install record | &nbsp; |
 | sg_id | Security group ID | null |
 | vpc_id | VPC network identifier | null |
 | subnet_ids | Subnet ID list | null |
 
 ### Optional Variables
+
 | Name | Description | Default |
 |------|-------------|---------|
 | num_of_replicas | MongoDB replica count | 1 |
 | ami | AMI ID | null |
-| ami_filter | AMI filter criteria | null |
-| ami_owner | AMI owner ID | null |
+| ami_filter | Ubuntu Noble AMI filter | ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-* |
+| ami_owner | Canonical Ubuntu AMI owner | 099720109477 |
 | aws_default_region | Default AWS region | us-east-1 |
-| mongodb_username | MongoDB admin username | null |
-| mongodb_password | MongoDB admin password | null |
-| bastion_ami | Bastion host AMI ID | null |
-| bastion_ami_filter | Bastion AMI filter criteria | null |
-| bastion_ami_owner | Bastion AMI owner ID | null |
-| bastion_destroy | Destroy bastion host after automation completes | null |
-| config_network | Configuration network (private, public) | private |
+| mongodb_username | MongoDB admin username | _random |
+| mongodb_password | MongoDB admin password | _random |
+| config_network | Configuration network (`private` or `public`) | private |
 | instance_type | EC2 instance type | t3.micro |
-| disksize | Disk size in GB | 20 |
-| labels | Configuration for labels | null |
-| cloud_tags_hash | Resource tags for cloud provider | null |
-| publish_to_saas | Boolean to publish values to Config0 SaaS UI | null |
-| volume_size | Storage volume size (GB) | 100 |
-| volume_mountpoint | Volume mount path | /var/lib/mongodb |
-| volume_fstype | Volume filesystem type | xfs |
+| disksize | Root disk size in GB | 20 |
+| labels | Resource labels | null |
+| cloud_tags_hash | Resource tags for the cloud provider | null |
+| publish_to_saas | Publish values to the Config0 SaaS UI | null |
+| volume_size | Data volume size in GB | 100 |
+| volume_mountpoint | Data volume mount path | /var/lib/mongodb |
+| volume_fstype | Data volume filesystem | xfs |
 
 ## Dependencies
 
 ### Substacks
-- [config0-hub:::ubuntu::ec2_ubuntu](https://api-app.config0.com/web_api/v1.0/stacks/config0-hub/ec2_ubuntu)
-- [config0-hub:::mongodb::create_mongodb_pem](https://api-app.config0.com/web_api/v1.0/stacks/config0-hub/create_mongodb_pem)
-- [config0-hub:::mongodb::create_mongodb_keyfile](https://api-app.config0.com/web_api/v1.0/stacks/config0-hub/create_mongodb_keyfile)
-- [config0-hub:::mongodb::mongodb_replica_ubuntu](https://api-app.config0.com/web_api/v1.0/stacks/config0-hub/mongodb_replica_ubuntu)
-- [config0-hub:::config0_core::delete_resource](https://api-app.config0.com/web_api/v1.0/stacks/config0-hub/delete_resource)
-- [config0-hub:::aws::new_ec2_ssh_key](https://api-app.config0.com/web_api/v1.0/stacks/config0-hub/new_ec2_ssh_key)
-- [config0-hub:::config0_core::output_resource_to_ui](https://api-app.config0.com/web_api/v1.0/stacks/config0-hub/config0_core/output_resource_to_ui)
+
+- `config0-hub:::aws::aws_ec2_server`
+- `config0-hub:::mongodb::create_mongodb_pem`
+- `config0-hub:::mongodb::create_mongodb_keyfile`
+- `config0-hub:::mongodb::mongodb_replica_ubuntu`
 
 ## License
-<pre>
+
 Copyright (C) 2025 Gary Leong <gary@config0.com>
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
-</pre>
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 3 of the License.
