@@ -32,10 +32,21 @@
 - name: Download MongoDB GPG key and add to keyring
   shell: |
     set -e
+    umask 022
+    set -o pipefail
     curl -sL https://www.mongodb.org/static/pgp/server-{{ mongodb_repo_version }}.asc | \
     gpg --dearmor > /usr/share/keyrings/mongodb-server-{{ mongodb_repo_version }}.gpg
   args:
     creates: "/usr/share/keyrings/mongodb-server-{{ mongodb_repo_version }}.gpg"
+    executable: /bin/bash
+  become: true
+
+- name: Ensure MongoDB keyring is world-readable
+  file:
+    path: "/usr/share/keyrings/mongodb-server-{{ mongodb_repo_version }}.gpg"
+    owner: root
+    group: root
+    mode: 0644
   become: true
 
 - name: Add MongoDB repository (native noble)
