@@ -172,10 +172,9 @@ def run(stackargs):
     stack.set_parallel()
 
     for host_info in mongodb_hosts_info:
-        stateful_id = stack.random_id(size=10)
+        workspace_id = stack.random_id(size=10)
         env_vars = {
             "METHOD": "create",
-            "STATEFUL_ID": stateful_id,
             "ANS_VAR_fstype": stack.volume_fstype,
             "ANS_VAR_mountpoint": stack.volume_mountpoint,
             "ANS_VAR_exec_ymls": (
@@ -189,7 +188,7 @@ def run(stackargs):
                 f"Format and mount the MongoDB volume on {host_info['hostname']}"
             ),
             env_vars=json.dumps(env_vars),
-            stateful_id=stateful_id,
+            workspace_id=workspace_id,
             automation_phase="infrastructure",
             hostname=host_info["hostname"],
             groups=stack.config_vol
@@ -204,22 +203,30 @@ def run(stackargs):
         public_ips,
         private_ips
     )
+    mongodb_groups = [
+        stack.ubuntu_vendor_setup,
+        stack.ubuntu_vendor_init_replica
+    ]
+    host_workspace_ids = {
+        host_info["hostname"]: stack.random_id(size=10)
+        for host_info in mongodb_hosts_info
+    }
+
     stack.set_parallel()
 
     for host_info in mongodb_hosts_info:
-        stateful_id = stack.random_id(size=10)
+        workspace_id = host_workspace_ids[host_info["hostname"]]
         env_vars = base_env_vars.copy()
-        env_vars["STATEFUL_ID"] = stateful_id
         env_vars["ANS_VAR_exec_ymls"] = "entry_point/20-mongo-setup.yml"
 
         stack.add_groups_to_host(
             display=True,
             human_description=f"Install MongoDB on {host_info['hostname']}",
             env_vars=json.dumps(env_vars),
-            stateful_id=stateful_id,
+            workspace_id=workspace_id,
             automation_phase="infrastructure",
             hostname=host_info["hostname"],
-            groups=[stack.ubuntu_vendor_setup]
+            groups=mongodb_groups
         )
 
     stack.unset_parallel(wait_all=True)
@@ -228,19 +235,19 @@ def run(stackargs):
     if private_ips[1:]:
         primary_exec_ymls.append("entry_point/40-mongo-add-slave-replica.yml")
 
-    stateful_id = stack.random_id(size=10)
+    primary_hostname = mongodb_hosts_info[0]["hostname"]
+    workspace_id = host_workspace_ids[primary_hostname]
     env_vars = base_env_vars.copy()
-    env_vars["STATEFUL_ID"] = stateful_id
     env_vars["ANS_VAR_exec_ymls"] = ",".join(primary_exec_ymls)
 
     stack.add_groups_to_host(
         display=True,
         human_description="Initialize the MongoDB replica set",
         env_vars=json.dumps(env_vars),
-        stateful_id=stateful_id,
+        workspace_id=workspace_id,
         automation_phase="infrastructure",
-        hostname=mongodb_hosts_info[0]["hostname"],
-        groups=[stack.ubuntu_vendor_init_replica]
+        hostname=primary_hostname,
+        groups=mongodb_groups
     )
 
     if stack.get_attr("publish_to_saas"):
