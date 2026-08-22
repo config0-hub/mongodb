@@ -28,6 +28,7 @@ import subprocess
 from config0_publisher.tmpdir import OnDiskTmpDir
 from config0_publisher.loggerly import Config0Logger
 from config0_publisher.resource.manage import ResourceCmdHelper
+from config0_publisher.resource.manage_output import insert_resource_id
 
 
 class Main(ResourceCmdHelper):
@@ -146,8 +147,7 @@ class Main(ResourceCmdHelper):
                 "tags": ["mongodb", "mongodb.pem", "pem", "ssl", "mongodb7"]
             }
             
-            resource['id'] = self.get_hash(resource)
-            resource['_id'] = resource['id']
+            insert_resource_id(resource)
             self.write_resource_to_json_file(resource)
             
             # Create resource metadata for CA certificate
@@ -170,8 +170,7 @@ class Main(ResourceCmdHelper):
                 "tags": ["mongodb", "mongodb_ca", "ca", "ssl", "mongodb7"]
             }
             
-            ca_resource['id'] = self.get_hash(ca_resource)
-            ca_resource['_id'] = ca_resource['id']
+            insert_resource_id(ca_resource)
             self.write_resource_to_json_file(ca_resource)
             
         finally:
@@ -233,8 +232,7 @@ class Main(ResourceCmdHelper):
                 "tags": ["mongodb", "mongodb.pem", "combined_pem", "ssl", "mongodb7"]
             }
             
-            resource['id'] = self.get_hash(resource)
-            resource['_id'] = resource['id']
+            insert_resource_id(resource)
             self.write_resource_to_json_file(resource)
             
         finally:
@@ -269,8 +267,7 @@ class Main(ResourceCmdHelper):
             "tags": ["mongodb", "mongodb_key_file", "replica_set_key", "mongodb7"]
         }
         
-        resource['id'] = self.get_hash(resource)
-        resource['_id'] = resource['id']
+        insert_resource_id(resource)
         self.write_resource_to_json_file(resource)
 
 
