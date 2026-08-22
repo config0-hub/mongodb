@@ -34,7 +34,7 @@ def run(stackargs):
 
     env_vars = {
         "NAME": stack.basename,
-        "METHOD": "create"
+        "SSL_OP": "create"
     }
 
     inputargs = {
