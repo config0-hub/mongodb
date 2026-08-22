@@ -204,11 +204,6 @@ def run(stackargs):
         public_ips,
         private_ips
     )
-    mongodb_groups = [
-        stack.ubuntu_vendor_setup,
-        stack.ubuntu_vendor_init_replica
-    ]
-
     stack.set_parallel()
 
     for host_info in mongodb_hosts_info:
@@ -224,7 +219,7 @@ def run(stackargs):
             stateful_id=stateful_id,
             automation_phase="infrastructure",
             hostname=host_info["hostname"],
-            groups=mongodb_groups
+            groups=[stack.ubuntu_vendor_setup]
         )
 
     stack.unset_parallel(wait_all=True)
@@ -245,7 +240,7 @@ def run(stackargs):
         stateful_id=stateful_id,
         automation_phase="infrastructure",
         hostname=mongodb_hosts_info[0]["hostname"],
-        groups=mongodb_groups
+        groups=[stack.ubuntu_vendor_init_replica]
     )
 
     if stack.get_attr("publish_to_saas"):
