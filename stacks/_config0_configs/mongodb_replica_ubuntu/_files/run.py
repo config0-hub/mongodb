@@ -64,7 +64,7 @@ def _get_mongodb_hosts(stack):
         host_info["hostname"] = mongodb_host
         mongodb_hosts_info.append(host_info)
 
-        stack.logger.debug_highlight(
+        stack.logger.debug(
             f'MongoDB hostname {mongodb_host}, public IP "{host_info["public_ip"]}"'
         )
 
