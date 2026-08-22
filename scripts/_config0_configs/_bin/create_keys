@@ -87,18 +87,18 @@ class Main(ResourceCmdHelper):
         try:
             # Generate a CA certificate (self-signed)
             ca_key_cmd = f'openssl genrsa -out ca.key {self.cert_bits}'
-            self.execute(ca_key_cmd)
+            self.execute(ca_key_cmd, output_to_json=False)
             
             ca_cert_cmd = (
                 f'openssl req -new -x509 -key ca.key -out ca.pem '
                 f'-subj "/C={self.country}/ST={self.country_state}/L={self.city}/O=MongoDB CA/CN={self.cert_cn} CA" '
                 f'-days {self.cert_length} -sha256'
             )
-            self.execute(ca_cert_cmd)
+            self.execute(ca_cert_cmd, output_to_json=False)
             
             # Generate server key
             server_key_cmd = f'openssl genrsa -out mongodb.key {self.cert_bits}'
-            self.execute(server_key_cmd)
+            self.execute(server_key_cmd, output_to_json=False)
             
             # Generate CSR
             csr_cmd = (
@@ -106,26 +106,26 @@ class Main(ResourceCmdHelper):
                 f'-subj "/C={self.country}/ST={self.country_state}/L={self.city}/O=MongoDB/CN={self.cert_cn}" '
                 f'-sha256'
             )
-            self.execute(csr_cmd)
+            self.execute(csr_cmd, output_to_json=False)
             
             # Sign server CSR with CA
             sign_cmd = (
                 f'openssl x509 -req -in mongodb.csr -CA ca.pem -CAkey ca.key '
                 f'-CAcreateserial -out mongodb.crt -days {self.cert_length} -sha256'
             )
-            self.execute(sign_cmd)
+            self.execute(sign_cmd, output_to_json=False)
             
             # Combine key and cert into PEM file for server
             combine_cmd = 'cat mongodb.key mongodb.crt > mongodb.pem'
-            self.execute(combine_cmd)
+            self.execute(combine_cmd, output_to_json=False)
             
             # Read the PEM file contents
             cmd = 'cat mongodb.pem'
-            results = self.execute(cmd)
+            results = self.execute(cmd, output_to_json=False)
             
             # Read the CA certificate
             ca_cmd = 'cat ca.pem'
-            ca_results = self.execute(ca_cmd)
+            ca_results = self.execute(ca_cmd, output_to_json=False)
             
             # Create resource metadata for server certificate+key
             resource = {
@@ -200,16 +200,16 @@ class Main(ResourceCmdHelper):
                 f'-days {self.cert_length} -nodes -out mongodb.crt -keyout mongodb.key '
                 f'-sha256'  # Use SHA-256 for better security
             )
-            self.execute(cmd)
+            self.execute(cmd, output_to_json=False)
     
             # Combine into PEM file (certificate first, then key)
             # This ordering is important for MongoDB to properly read it as both cert and CA
             cmd = 'cat mongodb.crt mongodb.key > mongodb.pem'
-            self.execute(cmd)
+            self.execute(cmd, output_to_json=False)
     
             # Read the PEM file contents
             cmd = 'cat mongodb.pem'
-            results = self.execute(cmd)
+            results = self.execute(cmd, output_to_json=False)
             
             # Create resource metadata
             resource = {
@@ -252,7 +252,7 @@ class Main(ResourceCmdHelper):
         """
         # MongoDB 7.0 recommended key size
         cmd = 'openssl rand -base64 756'
-        results = self.execute(cmd)
+        results = self.execute(cmd, output_to_json=False)
 
         # Create resource metadata
         resource = {
