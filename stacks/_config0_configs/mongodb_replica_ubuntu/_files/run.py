@@ -40,7 +40,6 @@ def _get_mongodb_keyfile(stack):
 
 
 def _get_mongodb_hosts(stack):
-    public_ips = []
     private_ips = []
     mongodb_hosts_info = []
 
@@ -65,19 +64,16 @@ def _get_mongodb_hosts(stack):
         mongodb_hosts_info.append(host_info)
 
         stack.logger.debug(
-            f'MongoDB hostname {mongodb_host}, public IP "{host_info["public_ip"]}"'
+            f'MongoDB hostname {mongodb_host}, private IP "{host_info["private_ip"]}"'
         )
-
-        if host_info["public_ip"] not in public_ips:
-            public_ips.append(host_info["public_ip"])
 
         if host_info["private_ip"] not in private_ips:
             private_ips.append(host_info["private_ip"])
 
-    return mongodb_hosts_info, public_ips, private_ips
+    return mongodb_hosts_info, private_ips
 
 
-def _mongodb_env_vars(stack, mongodb_pem, mongodb_keyfile, public_ips, private_ips):
+def _mongodb_env_vars(stack, mongodb_pem, mongodb_keyfile, private_ips):
     return {
         "METHOD": "create",
         "ANS_VAR_mongodb_pem": mongodb_pem,
@@ -91,8 +87,6 @@ def _mongodb_env_vars(stack, mongodb_pem, mongodb_keyfile, public_ips, private_i
         "ANS_VAR_mongodb_password": stack.mongodb_password,
         "ANS_VAR_mongodb_config_network": private_ips[0],
         "ANS_VAR_mongodb_cluster": stack.mongodb_cluster,
-        "ANS_VAR_mongodb_main_ips": f"{public_ips[0]},{private_ips[0]}",
-        "ANS_VAR_mongodb_public_ips": ",".join(public_ips),
         "ANS_VAR_mongodb_private_ips": ",".join(private_ips),
         "ANS_VAR_mongodb_config_ips": ",".join(private_ips),
         "ANS_VAR_mongodb_primary_ip": private_ips[0],
@@ -145,7 +139,7 @@ def run(stackargs):
 
     mongodb_pem = _get_mongodb_pem(stack)
     mongodb_keyfile = _get_mongodb_keyfile(stack)
-    mongodb_hosts_info, public_ips, private_ips = _get_mongodb_hosts(stack)
+    mongodb_hosts_info, private_ips = _get_mongodb_hosts(stack)
 
     stack.set_parallel()
 
@@ -200,7 +194,6 @@ def run(stackargs):
         stack,
         mongodb_pem,
         mongodb_keyfile,
-        public_ips,
         private_ips
     )
     mongodb_groups = [
@@ -258,7 +251,6 @@ def run(stackargs):
             "mongodb_storage_engine": stack.mongodb_storage_engine,
             "mongodb_bind_ip": stack.mongodb_bind_ip,
             "mongodb_logpath": stack.mongodb_logpath,
-            "mongodb_public_ips": ",".join(public_ips),
             "mongodb_private_ips": ",".join(private_ips)
         }
 

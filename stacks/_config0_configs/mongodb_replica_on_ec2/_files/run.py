@@ -79,6 +79,11 @@ class Main(newSchedStack):
                                 tags="mongo_replica",
                                 default="private")
 
+        self.parse.add_optional(key="associate_public_ip_address",
+                                types="bool",
+                                tags="create_vm",
+                                default="false")
+
         self.parse.add_required(key="sg_id",
                                 tags="create_vm",
                                 default="null")
