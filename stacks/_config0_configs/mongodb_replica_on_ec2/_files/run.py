@@ -45,6 +45,12 @@ class Main(newSchedStack):
                                 types="str",
                                 tags="create_vm")
 
+        # selects the ssm_ec2_exec_eventbridge install the host orders run
+        # through; tagged so it rides into mongodb_replica_ubuntu
+        self.parse.add_required(key="install_name",
+                                types="str",
+                                tags="mongo_replica")
+
         self.parse.add_optional(key="ami",
                                 types="str",
                                 default="null")

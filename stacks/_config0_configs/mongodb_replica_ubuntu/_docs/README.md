@@ -13,6 +13,7 @@ This worker stack attaches and configures each MongoDB data volume, installs Mon
 | mongodb_hosts | MongoDB EC2 hostnames | &nbsp; |
 | mongodb_cluster | MongoDB cluster name | &nbsp; |
 | aws_default_region | AWS region containing the hosts and volumes | &nbsp; |
+| install_name | Name of the `ssm_ec2_exec_eventbridge_install` record the host orders run through | &nbsp; |
 
 ### Optional Variables
 

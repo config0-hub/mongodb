@@ -105,6 +105,8 @@ def run(stackargs):
     stack.parse.add_required(key="mongodb_hosts")
     stack.parse.add_required(key="mongodb_cluster")
     stack.parse.add_required(key="aws_default_region")
+    # selects the ssm_ec2_exec_eventbridge install the host orders run through
+    stack.parse.add_required(key="install_name")
 
     stack.parse.add_optional(key="mongodb_username", default="_random")
     stack.parse.add_optional(key="mongodb_password", default="_random")
@@ -185,6 +187,7 @@ def run(stackargs):
             workspace_id=workspace_id,
             automation_phase="infrastructure",
             hostname=host_info["hostname"],
+            install_name=stack.install_name,
             groups=stack.config_vol
         )
 
@@ -219,6 +222,7 @@ def run(stackargs):
             workspace_id=workspace_id,
             automation_phase="infrastructure",
             hostname=host_info["hostname"],
+            install_name=stack.install_name,
             groups=mongodb_groups
         )
 
@@ -240,6 +244,7 @@ def run(stackargs):
         workspace_id=workspace_id,
         automation_phase="infrastructure",
         hostname=primary_hostname,
+        install_name=stack.install_name,
         groups=mongodb_groups
     )
 

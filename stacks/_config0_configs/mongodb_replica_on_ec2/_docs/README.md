@@ -17,6 +17,7 @@ The caller supplies the `instance_profile_name`, `managed_tag_key`, and `managed
 | instance_profile_name | Instance profile promoted by the SSM engine install record | &nbsp; |
 | managed_tag_key | Managed tag key promoted by the SSM engine install record | &nbsp; |
 | managed_tag_value | Managed tag value promoted by the SSM engine install record | &nbsp; |
+| install_name | Name of the `ssm_ec2_exec_eventbridge_install` record the host orders run through | &nbsp; |
 | sg_id | Security group ID | null |
 | vpc_id | VPC network identifier | null |
 | subnet_ids | Subnet ID list | null |
