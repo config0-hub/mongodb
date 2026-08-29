@@ -224,7 +224,6 @@ class Main(newSchedStack):
         )
 
     def run(self):
-        self.stack.unset_parallel(sched_init=True)
         self.add_job("pem")
         self.add_job("keyfile")
         self.add_job("create")
