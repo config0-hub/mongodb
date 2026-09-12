@@ -55,10 +55,13 @@ class Main(newSchedStack):
                                 types="str",
                                 default="null")
 
+        # pinned 2026-09-12 because mongod 8.0.x refuses kernels 6.19+
+        # (SERVER-121912) and every noble AMI from 20260828 on ships one;
+        # unpin when a mongodb-org release lifts the check
         self.parse.add_optional(
             key="ami_filter",
             types="str",
-            default="ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
+            default="ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-20260714"
         )
 
         self.parse.add_optional(key="ami_owner",
