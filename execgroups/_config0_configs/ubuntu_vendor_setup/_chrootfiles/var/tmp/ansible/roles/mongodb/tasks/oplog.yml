@@ -1,0 +1,119 @@
+---
+- name: Validate desired MongoDB oplog size
+  ansible.builtin.assert:
+    that:
+      - mongodb_repl_oplog_size is number
+      - mongodb_repl_oplog_size | float >= 990
+      - mongodb_repl_oplog_size | float <= 1048576
+    fail_msg: mongodb_repl_oplog_size must be a number from 990 through 1048576 MB
+
+- name: Observe authenticated live MongoDB oplog state before resize
+  ansible.builtin.command:
+    argv:
+      - mongosh
+      - --quiet
+      - --tls
+      - --tlsAllowInvalidCertificates
+      - --host
+      - "localhost:{{ mongodb_port }}"
+      - --username
+      - "{{ mongodb_admin_user }}"
+      - --password
+      - "{{ mongodb_admin_pass }}"
+      - --authenticationDatabase
+      - admin
+      - --eval
+      - >-
+        const stats = db.getSiblingDB("local").runCommand({collStats: "oplog.rs"});
+        if (!stats.ok) throw new Error("Cannot read live MongoDB oplog size: " + EJSON.stringify(stats));
+        print(JSON.stringify({version: db.version(), max_size_bytes: Number(stats.maxSize)}));
+  register: mongodb_oplog_before_result
+  changed_when: false
+  no_log: true
+
+- name: Record live MongoDB oplog state before resize
+  ansible.builtin.set_fact:
+    mongodb_oplog_before: "{{ mongodb_oplog_before_result.stdout | from_json }}"
+
+- name: Validate MongoDB oplog resize version
+  ansible.builtin.assert:
+    that:
+      - mongodb_oplog_before.version is version('3.6', '>=')
+    fail_msg: >-
+      replSetResizeOplog requires MongoDB 3.6 or newer;
+      found {{ mongodb_oplog_before.version }}
+
+- name: Resize live MongoDB oplog when its size differs
+  ansible.builtin.command:
+    argv:
+      - mongosh
+      - --quiet
+      - --tls
+      - --tlsAllowInvalidCertificates
+      - --host
+      - "localhost:{{ mongodb_port }}"
+      - --username
+      - "{{ mongodb_admin_user }}"
+      - --password
+      - "{{ mongodb_admin_pass }}"
+      - --authenticationDatabase
+      - admin
+      - --eval
+      - >-
+        const result = db.adminCommand({replSetResizeOplog: 1, size: Double({{ mongodb_repl_oplog_size }})});
+        if (!result.ok) throw new Error("replSetResizeOplog failed: " + EJSON.stringify(result));
+  register: mongodb_oplog_resize_result
+  when: >-
+    mongodb_oplog_before.max_size_bytes | int !=
+    (mongodb_repl_oplog_size | float * 1024 * 1024) | int
+  changed_when: false
+  no_log: true
+
+- name: Observe authenticated live MongoDB oplog state after resize
+  ansible.builtin.command:
+    argv:
+      - mongosh
+      - --quiet
+      - --tls
+      - --tlsAllowInvalidCertificates
+      - --host
+      - "localhost:{{ mongodb_port }}"
+      - --username
+      - "{{ mongodb_admin_user }}"
+      - --password
+      - "{{ mongodb_admin_pass }}"
+      - --authenticationDatabase
+      - admin
+      - --eval
+      - >-
+        const stats = db.getSiblingDB("local").runCommand({collStats: "oplog.rs"});
+        if (!stats.ok) throw new Error("Cannot read live MongoDB oplog size: " + EJSON.stringify(stats));
+        print(JSON.stringify({version: db.version(), max_size_bytes: Number(stats.maxSize)}));
+  register: mongodb_oplog_after_result
+  changed_when: false
+  no_log: true
+
+- name: Record live MongoDB oplog state after resize
+  ansible.builtin.set_fact:
+    mongodb_oplog_after: "{{ mongodb_oplog_after_result.stdout | from_json }}"
+
+- name: Require the desired live MongoDB oplog size
+  ansible.builtin.assert:
+    that:
+      - >-
+        mongodb_oplog_after.max_size_bytes | int ==
+        (mongodb_repl_oplog_size | float * 1024 * 1024) | int
+    fail_msg: >-
+      MongoDB oplog size is
+      {{ mongodb_oplog_after.max_size_bytes | int }} bytes after resize;
+      expected {{ (mongodb_repl_oplog_size | float * 1024 * 1024) | int }} bytes
+
+- name: Report observed live MongoDB oplog change
+  ansible.builtin.debug:
+    msg: >-
+      MongoDB oplog size moved from
+      {{ mongodb_oplog_before.max_size_bytes | int }} bytes to
+      {{ mongodb_oplog_after.max_size_bytes | int }} bytes
+  changed_when: >-
+    mongodb_oplog_before.max_size_bytes | int !=
+    mongodb_oplog_after.max_size_bytes | int

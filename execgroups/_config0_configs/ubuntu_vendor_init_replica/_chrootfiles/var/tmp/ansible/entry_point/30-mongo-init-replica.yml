@@ -32,6 +32,14 @@
   roles:
     - role: ../roles/init_replica_nodes
 
+  # A play-level roles: entry ignores tasks_from and runs tasks/main.yml, so
+  # the oplog task file is imported here, after replica initialization.
+  tasks:
+    - name: Converge the live MongoDB oplog size
+      ansible.builtin.import_role:
+        name: ../roles/mongodb
+        tasks_from: oplog
+
   post_tasks:
     - name: Wait for authenticated PRIMARY status
       ansible.builtin.command:

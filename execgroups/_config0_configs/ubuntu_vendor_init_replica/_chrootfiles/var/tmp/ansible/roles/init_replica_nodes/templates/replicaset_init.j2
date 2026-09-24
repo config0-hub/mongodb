@@ -1,14 +1,21 @@
-// MongoDB 8.0 replica set bootstrap.
-// This runs once through the localhost exception; later commands authenticate.
-const initiateResult = rs.initiate({
-  _id: "{{ mongodb_repl_set_name }}",
-  members: [
-    {_id: 0, host: "{{ mongodb_primary_ip }}:{{ mongodb_port }}"}
-  ]
-});
-
-if (!initiateResult.ok) {
-  throw new Error("rs.initiate failed: " + EJSON.stringify(initiateResult));
+// MongoDB 8.0 replica set bootstrap. This can resume after either bootstrap
+// side effect, while the localhost exception is still available.
+let changed = false;
+const replicaStatus = db.getSiblingDB("admin").runCommand({replSetGetStatus: 1});
+if (!replicaStatus.ok) {
+  if (replicaStatus.codeName !== "NotYetInitialized") {
+    throw new Error("replSetGetStatus failed: " + EJSON.stringify(replicaStatus));
+  }
+  const initiateResult = rs.initiate({
+    _id: "{{ mongodb_repl_set_name }}",
+    members: [
+      {_id: 0, host: "{{ mongodb_primary_ip }}:{{ mongodb_port }}"}
+    ]
+  });
+  if (!initiateResult.ok) {
+    throw new Error("rs.initiate failed: " + EJSON.stringify(initiateResult));
+  }
+  changed = true;
 }
 
 const maxAttempts = Math.ceil({{ mongodb_init_timeout }} / 2);
@@ -30,12 +37,16 @@ if (!primaryReady) {
   throw new Error("Replica set did not elect the intended PRIMARY within {{ mongodb_init_timeout }} seconds");
 }
 
-db.getSiblingDB("admin").createUser({
-  user: "{{ mongodb_admin_user }}",
-  pwd: "{{ mongodb_admin_pass }}",
-  roles: [
-    {role: "root", db: "admin"}
-  ]
-});
+const adminDb = db.getSiblingDB("admin");
+if (adminDb.getUser("{{ mongodb_admin_user }}") === null) {
+  adminDb.createUser({
+    user: "{{ mongodb_admin_user }}",
+    pwd: "{{ mongodb_admin_pass }}",
+    roles: [
+      {role: "root", db: "admin"}
+    ]
+  });
+  changed = true;
+}
 
-print("Replica set initialized and admin user created.");
+print(changed ? "CONFIG0_CHANGED" : "CONFIG0_UNCHANGED");

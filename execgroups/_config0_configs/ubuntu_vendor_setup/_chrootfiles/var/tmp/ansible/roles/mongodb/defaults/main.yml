@@ -14,6 +14,7 @@ mongodb_security_path: /etc/mongodb/security
 mongodb_keyfile_path: /etc/mongodb/security/mongodb_keyfile
 mongodb_pem_path: /etc/mongodb/security/mongo.pem
 mongodb_storage_engine: "wiredTiger"
+mongodb_repl_oplog_size: 990
 mongodb_profiling_threshold: 100
 mongodb_profiling_mode: "off"
 mongodb_enable_localhost_auth_bypass: true

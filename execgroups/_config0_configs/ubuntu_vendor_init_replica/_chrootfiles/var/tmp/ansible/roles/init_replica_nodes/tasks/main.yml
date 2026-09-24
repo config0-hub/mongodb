@@ -1,11 +1,33 @@
 ---
 - name: Initialize replica set and create the first admin user
   block:
+    - name: Check whether the MongoDB admin user already authenticates
+      ansible.builtin.command:
+        argv:
+          - mongosh
+          - --quiet
+          - --tls
+          - --tlsAllowInvalidCertificates
+          - --username
+          - "{{ mongodb_admin_user }}"
+          - --password
+          - "{{ mongodb_admin_pass }}"
+          - --authenticationDatabase
+          - admin
+          - "localhost:{{ mongodb_port }}/admin"
+          - --eval
+          - "quit(db.runCommand({connectionStatus: 1}).ok ? 0 : 1)"
+      register: mongodb_admin_auth
+      changed_when: false
+      failed_when: false
+      no_log: true
+
     - name: Render replica set initialization script
       ansible.builtin.template:
         src: replicaset_init.j2
         dest: /tmp/replicaset_init.js
         mode: "0600"
+      when: mongodb_admin_auth.rc != 0
       no_log: true
 
     # The first user must be created through MongoDB's localhost exception.
@@ -20,7 +42,8 @@
           - "localhost:{{ mongodb_port }}/admin"
           - /tmp/replicaset_init.js
       register: replica_init
-      changed_when: replica_init.rc == 0
+      changed_when: "'CONFIG0_CHANGED' in replica_init.stdout"
+      when: mongodb_admin_auth.rc != 0
       no_log: true
 
   always:

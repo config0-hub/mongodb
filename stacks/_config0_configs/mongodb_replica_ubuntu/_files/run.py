@@ -76,15 +76,15 @@ def _get_mongodb_hosts(stack):
 def _mongodb_env_vars(stack, mongodb_pem, mongodb_keyfile, private_ips):
     return {
         "METHOD": "create",
-        "ANS_VAR_mongodb_pem": mongodb_pem,
-        "ANS_VAR_mongodb_keyfile": mongodb_keyfile,
+        "ANS_VAR_mongodb_pem": "secret:::mongodb_pem",
+        "ANS_VAR_mongodb_keyfile": "secret:::mongodb_keyfile",
         "ANS_VAR_mongodb_port": stack.mongodb_port,
         "ANS_VAR_mongodb_data_dir": stack.mongodb_data_dir,
         "ANS_VAR_mongodb_storage_engine": stack.mongodb_storage_engine,
         "ANS_VAR_mongodb_bind_ip": stack.mongodb_bind_ip,
         "ANS_VAR_mongodb_logpath": stack.mongodb_logpath,
-        "ANS_VAR_mongodb_username": stack.mongodb_username,
-        "ANS_VAR_mongodb_password": stack.mongodb_password,
+        "ANS_VAR_mongodb_username": "secret:::mongodb_username",
+        "ANS_VAR_mongodb_password": "secret:::mongodb_password",
         "ANS_VAR_mongodb_config_network": private_ips[0],
         "ANS_VAR_mongodb_cluster": stack.mongodb_cluster,
         "ANS_VAR_mongodb_private_ips": ",".join(private_ips),
@@ -142,6 +142,11 @@ def run(stackargs):
     mongodb_pem = _get_mongodb_pem(stack)
     mongodb_keyfile = _get_mongodb_keyfile(stack)
     mongodb_hosts_info, private_ips = _get_mongodb_hosts(stack)
+
+    stack.add_secret(name="mongodb_pem", value=mongodb_pem)
+    stack.add_secret(name="mongodb_keyfile", value=mongodb_keyfile)
+    stack.add_secret(name="mongodb_username", value=stack.mongodb_username)
+    stack.add_secret(name="mongodb_password", value=stack.mongodb_password)
 
     stack.set_parallel()
 

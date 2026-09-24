@@ -3,11 +3,8 @@
 # Modernizations: MongoDB 8.0 from the native noble repo (legacy inverted
 # version pick and the noble->jammy repo hack DELETED); localhost mode.
 
-- name: Update system packages
-  apt:
-    update_cache: yes
-  become: true
-
+# The cache refresh rides the first install: a cache-only apt task reports
+# changed on every refresh, a package task only when a package changes.
 - name: Install dependencies
   apt:
     name:
@@ -15,6 +12,7 @@
       - curl
       - haveged
     state: present
+    update_cache: yes
   become: true
 
 - name: Ensure haveged is running for entropy
@@ -24,10 +22,20 @@
     enabled: yes
   become: true
 
-- name: Remove existing MongoDB repository files
-  shell: rm -f /etc/apt/sources.list.d/mongodb*.list
+- name: Find MongoDB repository files
+  find:
+    paths: /etc/apt/sources.list.d
+    patterns: "mongodb*.list"
   become: true
-  changed_when: false
+  register: mongodb_repo_files
+
+- name: Remove obsolete MongoDB repository files
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ mongodb_repo_files.files }}"
+  when: item.path | basename != 'mongodb-org-' ~ mongodb_repo_version ~ '.list'
+  become: true
 
 - name: Download MongoDB GPG key and add to keyring
   shell: |
@@ -127,16 +135,9 @@
   become: true
   notify: restart mongodb
 
-# Apply the notified restart before the explicit stop/start sequence below.
-# This keeps the playbook's final port check after its last service restart.
+# Apply a configuration restart before checking the final service state.
 - name: Apply MongoDB configuration handlers
   meta: flush_handlers
-
-- name: Stop MongoDB service (if running)
-  service:
-    name: mongod
-    state: stopped
-  become: true
 
 - name: Start and enable MongoDB service
   service:
