@@ -1,52 +1,57 @@
-// MongoDB 8.0 replica set bootstrap. This can resume after either bootstrap
-// side effect, while the localhost exception is still available.
-let changed = false;
-const replicaStatus = db.getSiblingDB("admin").runCommand({replSetGetStatus: 1});
-if (!replicaStatus.ok) {
-  if (replicaStatus.codeName !== "NotYetInitialized") {
-    throw new Error("replSetGetStatus failed: " + EJSON.stringify(replicaStatus));
+// MongoDB 8.0 replica set bootstrap through the localhost exception. It runs
+// only while the admin user cannot authenticate, and it can resume after the
+// replica set was initiated but before the admin user was created.
+// mongosh throws on a failed command, so every failure lands in the catch
+// below, which prints one CONFIG0_ERROR line: a fixed step name and a MongoDB
+// error code name, never a value.
+let step = "read_replica_state";
+let failure = null;
+try {
+  const adminDb = db.getSiblingDB("admin");
+  // hello needs no privileges; setName appears once a replica set config exists.
+  if (adminDb.runCommand({hello: 1}).setName === undefined) {
+    step = "initiate";
+    rs.initiate({
+      _id: "{{ mongodb_repl_set_name }}",
+      members: [
+        {_id: 0, host: "{{ mongodb_primary_ip }}:{{ mongodb_port }}"}
+      ]
+    });
   }
-  const initiateResult = rs.initiate({
-    _id: "{{ mongodb_repl_set_name }}",
-    members: [
-      {_id: 0, host: "{{ mongodb_primary_ip }}:{{ mongodb_port }}"}
-    ]
-  });
-  if (!initiateResult.ok) {
-    throw new Error("rs.initiate failed: " + EJSON.stringify(initiateResult));
+
+  step = "wait_primary";
+  const maxAttempts = Math.ceil({{ mongodb_init_timeout }} / 2);
+  let primaryReady = false;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const hello = adminDb.runCommand({hello: 1});
+    if (hello.isWritablePrimary && hello.primary === "{{ mongodb_primary_ip }}:{{ mongodb_port }}") {
+      primaryReady = true;
+      break;
+    }
+    print("Waiting for PRIMARY (" + attempt + "/" + maxAttempts + ")");
+    sleep(2000);
   }
-  changed = true;
+
+  if (primaryReady) {
+    // The localhost exception exists only while no user exists, so the user
+    // is created without a usersInfo read, which the exception does not allow.
+    step = "create_user";
+    adminDb.createUser({
+      user: "{{ mongodb_admin_user }}",
+      pwd: "{{ mongodb_admin_pass }}",
+      roles: [
+        {role: "root", db: "admin"}
+      ]
+    });
+  } else {
+    failure = "wait_primary PrimaryNotElected";
+  }
+} catch (error) {
+  failure = step + " " + String(error.codeName || error.name).replace(/[^A-Za-z0-9_]/g, "");
 }
 
-const maxAttempts = Math.ceil({{ mongodb_init_timeout }} / 2);
-let primaryReady = false;
-for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-  const hello = db.getSiblingDB("admin").runCommand({hello: 1});
-  if (!hello.ok) {
-    throw new Error("hello command failed: " + EJSON.stringify(hello));
-  }
-  if (hello.isWritablePrimary && hello.primary === "{{ mongodb_primary_ip }}:{{ mongodb_port }}") {
-    primaryReady = true;
-    break;
-  }
-  print("Waiting for PRIMARY (" + attempt + "/" + maxAttempts + ")");
-  sleep(2000);
+if (failure !== null) {
+  print("CONFIG0_ERROR: " + failure);
+  quit(1);
 }
-
-if (!primaryReady) {
-  throw new Error("Replica set did not elect the intended PRIMARY within {{ mongodb_init_timeout }} seconds");
-}
-
-const adminDb = db.getSiblingDB("admin");
-if (adminDb.getUser("{{ mongodb_admin_user }}") === null) {
-  adminDb.createUser({
-    user: "{{ mongodb_admin_user }}",
-    pwd: "{{ mongodb_admin_pass }}",
-    roles: [
-      {role: "root", db: "admin"}
-    ]
-  });
-  changed = true;
-}
-
-print(changed ? "CONFIG0_CHANGED" : "CONFIG0_UNCHANGED");
+print("CONFIG0_CHANGED");

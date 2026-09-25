@@ -43,8 +43,19 @@
           - /tmp/replicaset_init.js
       register: replica_init
       changed_when: "'CONFIG0_CHANGED' in replica_init.stdout"
+      # no_log hides the output, so the next task reports a failure with the
+      # script's sanitized CONFIG0_ERROR line only.
+      failed_when: false
       when: mongodb_admin_auth.rc != 0
       no_log: true
+
+    - name: Fail with the sanitized replica set bootstrap error
+      ansible.builtin.fail:
+        msg: >-
+          {{ replica_init.stdout_lines | select('match', '^CONFIG0_ERROR: ') | first
+          | default('CONFIG0_ERROR: bootstrap exited before the script reported') }}
+          (exit {{ replica_init.rc }})
+      when: replica_init is not skipped and replica_init.rc != 0
 
   always:
     - name: Remove replica set initialization script
