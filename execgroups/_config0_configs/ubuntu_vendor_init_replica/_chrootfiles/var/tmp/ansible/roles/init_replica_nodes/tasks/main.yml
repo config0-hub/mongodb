@@ -16,7 +16,9 @@
           - admin
           - "localhost:{{ mongodb_port }}/admin"
           - --eval
-          - "quit(db.runCommand({connectionStatus: 1}).ok ? 0 : 1)"
+          # A failed login exits non-zero before this runs, and that exit is
+          # the signal to bootstrap; authenticatedUsers is the reply field.
+          - "quit(db.runCommand({connectionStatus: 1}).authInfo.authenticatedUsers.length > 0 ? 0 : 1)"
       register: mongodb_admin_auth
       changed_when: false
       failed_when: false

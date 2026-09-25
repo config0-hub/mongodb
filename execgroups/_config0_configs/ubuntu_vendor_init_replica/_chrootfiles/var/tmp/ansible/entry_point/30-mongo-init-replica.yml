@@ -57,17 +57,42 @@
           - --authenticationDatabase
           - admin
           - --eval
+          # hello reports this member's view of the PRIMARY without throwing
+          # while an election is in progress, so the wait stays in the script.
           - >-
-            const status = rs.status();
-            const primary = status.members.filter(m => m.stateStr === "PRIMARY");
-            print(primary.map(m => m.name + " " + m.stateStr).join("\n"));
-            if (primary.length !== 1 || primary[0].name !== "{{ mongodb_primary_ip }}:{{ mongodb_port }}") quit(1);
+            let failure = "wait_primary PrimaryNotElected";
+            try {
+              for (let attempt = 1; attempt <= 10; attempt++) {
+                const hello = db.getSiblingDB("admin").runCommand({hello: 1});
+                if (hello.isWritablePrimary && hello.primary === "{{ mongodb_primary_ip }}:{{ mongodb_port }}") {
+                  print(hello.primary + " PRIMARY");
+                  failure = null;
+                  break;
+                }
+                sleep(6000);
+              }
+            } catch (error) {
+              failure = "wait_primary " + String(error.codeName || error.name).replace(/[^A-Za-z0-9_]/g, "");
+            }
+            if (failure !== null) {
+              print("CONFIG0_ERROR: " + failure);
+              quit(1);
+            }
       register: authenticated_primary_status
       changed_when: false
-      retries: 10
-      delay: 6
-      until: authenticated_primary_status.rc == 0
+      # no_log hides the output, so the next task reports a failure with the
+      # script's sanitized CONFIG0_ERROR line only. The wait loop is in the
+      # script: an Ansible until loop marks the task failed when it runs out.
+      failed_when: false
       no_log: true
+
+    - name: Fail with the sanitized authenticated PRIMARY error
+      ansible.builtin.fail:
+        msg: >-
+          {{ authenticated_primary_status.stdout_lines | select('match', '^CONFIG0_ERROR: ') | first
+          | default('CONFIG0_ERROR: wait_primary exited before the script reported') }}
+          (exit {{ authenticated_primary_status.rc }})
+      when: authenticated_primary_status.rc != 0
 
     - name: Display authenticated PRIMARY status
       ansible.builtin.debug:

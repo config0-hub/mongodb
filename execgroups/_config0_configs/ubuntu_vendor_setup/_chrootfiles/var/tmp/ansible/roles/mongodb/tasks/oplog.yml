@@ -24,12 +24,27 @@
       - admin
       - --eval
       - >-
-        const stats = db.getSiblingDB("local").runCommand({collStats: "oplog.rs"});
-        if (!stats.ok) throw new Error("Cannot read live MongoDB oplog size: " + EJSON.stringify(stats));
-        print(JSON.stringify({version: db.version(), max_size_bytes: Number(stats.maxSize)}));
+        try {
+          const stats = db.getSiblingDB("local").runCommand({collStats: "oplog.rs"});
+          print(JSON.stringify({version: db.version(), max_size_bytes: Number(stats.maxSize)}));
+        } catch (error) {
+          print("CONFIG0_ERROR: observe_oplog_before " + String(error.codeName || error.name).replace(/[^A-Za-z0-9_]/g, ""));
+          quit(1);
+        }
   register: mongodb_oplog_before_result
   changed_when: false
+  # no_log hides the output, so the next task reports a failure with the
+  # script's sanitized CONFIG0_ERROR line only.
+  failed_when: false
   no_log: true
+
+- name: Fail with the sanitized oplog before-resize read error
+  ansible.builtin.fail:
+    msg: >-
+      {{ mongodb_oplog_before_result.stdout_lines | select('match', '^CONFIG0_ERROR: ') | first
+      | default('CONFIG0_ERROR: observe_oplog_before exited before the script reported') }}
+      (exit {{ mongodb_oplog_before_result.rc }})
+  when: mongodb_oplog_before_result.rc != 0
 
 - name: Record live MongoDB oplog state before resize
   ansible.builtin.set_fact:
@@ -60,14 +75,29 @@
       - admin
       - --eval
       - >-
-        const result = db.adminCommand({replSetResizeOplog: 1, size: Double({{ mongodb_repl_oplog_size }})});
-        if (!result.ok) throw new Error("replSetResizeOplog failed: " + EJSON.stringify(result));
+        try {
+          db.adminCommand({replSetResizeOplog: 1, size: Double({{ mongodb_repl_oplog_size }})});
+        } catch (error) {
+          print("CONFIG0_ERROR: resize_oplog " + String(error.codeName || error.name).replace(/[^A-Za-z0-9_]/g, ""));
+          quit(1);
+        }
   register: mongodb_oplog_resize_result
   when: >-
     mongodb_oplog_before.max_size_bytes | int !=
     (mongodb_repl_oplog_size | float * 1024 * 1024) | int
   changed_when: false
+  # no_log hides the output, so the next task reports a failure with the
+  # script's sanitized CONFIG0_ERROR line only.
+  failed_when: false
   no_log: true
+
+- name: Fail with the sanitized oplog resize error
+  ansible.builtin.fail:
+    msg: >-
+      {{ mongodb_oplog_resize_result.stdout_lines | select('match', '^CONFIG0_ERROR: ') | first
+      | default('CONFIG0_ERROR: resize_oplog exited before the script reported') }}
+      (exit {{ mongodb_oplog_resize_result.rc }})
+  when: mongodb_oplog_resize_result is not skipped and mongodb_oplog_resize_result.rc != 0
 
 - name: Observe authenticated live MongoDB oplog state after resize
   ansible.builtin.command:
@@ -86,12 +116,27 @@
       - admin
       - --eval
       - >-
-        const stats = db.getSiblingDB("local").runCommand({collStats: "oplog.rs"});
-        if (!stats.ok) throw new Error("Cannot read live MongoDB oplog size: " + EJSON.stringify(stats));
-        print(JSON.stringify({version: db.version(), max_size_bytes: Number(stats.maxSize)}));
+        try {
+          const stats = db.getSiblingDB("local").runCommand({collStats: "oplog.rs"});
+          print(JSON.stringify({version: db.version(), max_size_bytes: Number(stats.maxSize)}));
+        } catch (error) {
+          print("CONFIG0_ERROR: observe_oplog_after " + String(error.codeName || error.name).replace(/[^A-Za-z0-9_]/g, ""));
+          quit(1);
+        }
   register: mongodb_oplog_after_result
   changed_when: false
+  # no_log hides the output, so the next task reports a failure with the
+  # script's sanitized CONFIG0_ERROR line only.
+  failed_when: false
   no_log: true
+
+- name: Fail with the sanitized oplog after-resize read error
+  ansible.builtin.fail:
+    msg: >-
+      {{ mongodb_oplog_after_result.stdout_lines | select('match', '^CONFIG0_ERROR: ') | first
+      | default('CONFIG0_ERROR: observe_oplog_after exited before the script reported') }}
+      (exit {{ mongodb_oplog_after_result.rc }})
+  when: mongodb_oplog_after_result.rc != 0
 
 - name: Record live MongoDB oplog state after resize
   ansible.builtin.set_fact:
