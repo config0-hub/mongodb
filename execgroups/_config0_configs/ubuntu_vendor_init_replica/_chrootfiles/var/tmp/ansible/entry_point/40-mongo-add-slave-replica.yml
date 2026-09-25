@@ -58,24 +58,50 @@
           - --authenticationDatabase
           - admin
           - --eval
+          # replSetGetStatus members carry each member's name, stateStr, and
+          # health; the wait stays in the script.
           - >-
-            const members = rs.status().members;
-            const primary = members.filter(m => m.stateStr === "PRIMARY");
-            const secondaries = members.filter(m => m.stateStr === "SECONDARY");
-            const unhealthy = members.filter(m => !["PRIMARY", "SECONDARY"].includes(m.stateStr));
-            print("NAME\tSTATE\tHEALTH");
-            members.forEach(m => print(m.name + "\t" + m.stateStr + "\t" + m.health));
-            if (members.length !== {{ (mongodb_secondary_ips | length) + 1 }} ||
-                primary.length !== 1 ||
-                primary[0].name !== "{{ mongodb_primary_ip }}:{{ mongodb_port }}" ||
-                secondaries.length !== {{ mongodb_secondary_ips | length }} ||
-                unhealthy.length !== 0) quit(1);
+            let failure = "wait_members MembersNotReady";
+            try {
+              for (let attempt = 1; attempt <= 24; attempt++) {
+                const members = db.adminCommand({replSetGetStatus: 1}).members;
+                const primary = members.filter(m => m.stateStr === "PRIMARY");
+                const secondaries = members.filter(m => m.stateStr === "SECONDARY");
+                const unhealthy = members.filter(m => !["PRIMARY", "SECONDARY"].includes(m.stateStr));
+                if (members.length === {{ (mongodb_secondary_ips | length) + 1 }} &&
+                    primary.length === 1 &&
+                    primary[0].name === "{{ mongodb_primary_ip }}:{{ mongodb_port }}" &&
+                    secondaries.length === {{ mongodb_secondary_ips | length }} &&
+                    unhealthy.length === 0) {
+                  print("NAME\tSTATE\tHEALTH");
+                  members.forEach(m => print(m.name + "\t" + m.stateStr + "\t" + m.health));
+                  failure = null;
+                  break;
+                }
+                sleep(5000);
+              }
+            } catch (error) {
+              failure = "wait_members " + String(error.codeName || error.name).replace(/[^A-Za-z0-9_]/g, "");
+            }
+            if (failure !== null) {
+              print("CONFIG0_ERROR: " + failure);
+              quit(1);
+            }
       register: replica_health
       changed_when: false
-      retries: 24
-      delay: 5
-      until: replica_health.rc == 0
+      # no_log hides the output, so the next task reports a failure with the
+      # script's sanitized CONFIG0_ERROR line only. The wait loop is in the
+      # script: an Ansible until loop marks the task failed when it runs out.
+      failed_when: false
       no_log: true
+
+    - name: Fail with the sanitized replica set member health error
+      ansible.builtin.fail:
+        msg: >-
+          {{ replica_health.stdout_lines | select('match', '^CONFIG0_ERROR: ') | first
+          | default('CONFIG0_ERROR: wait_members exited before the script reported') }}
+          (exit {{ replica_health.rc }})
+      when: replica_health.rc != 0
 
     - name: Display healthy replica set members
       ansible.builtin.debug:

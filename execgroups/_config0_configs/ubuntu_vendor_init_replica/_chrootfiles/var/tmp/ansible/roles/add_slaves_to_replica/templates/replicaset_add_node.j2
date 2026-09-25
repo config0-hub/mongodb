@@ -1,20 +1,44 @@
 // Add missing replica set members from the localhost-mode IP list.
+// A new member can be briefly unreachable, so the whole pass is retried and
+// each attempt re-reads the config. mongosh throws on a failed command, so
+// every failure lands in the catch below, and after the last attempt the
+// script prints one CONFIG0_ERROR line: a fixed step name and a MongoDB error
+// code name, never a value.
+const members = [
 {% for private_ip in mongodb_secondary_ips %}
-{
-  const member = "{{ private_ip }}:{{ mongodb_port }}";
-  const memberExists = rs.conf().members.some(configured => configured.host === member);
-
-  if (memberExists) {
-    print("Already configured: " + member);
-  } else {
-    const result = rs.add(member);
-    if (!result.ok) {
-      throw new Error("rs.add failed for " + member + ": " + EJSON.stringify(result));
+  "{{ private_ip }}:{{ mongodb_port }}",
+{% endfor %}
+];
+const maxAttempts = 3;
+let failure = null;
+for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+  let step = "read_config";
+  try {
+    for (const member of members) {
+      step = "read_config";
+      // replSetGetConfig's config.members lists every configured host.
+      const configured = db.adminCommand({replSetGetConfig: 1}).config.members;
+      if (configured.some(existing => existing.host === member)) {
+        print("Already configured: " + member);
+      } else {
+        step = "add_member";
+        rs.add(member);
+        print("Successfully added: " + member);
+        sleep(3000);
+      }
     }
-    print("Successfully added: " + member);
-    sleep(3000);
+    failure = null;
+    break;
+  } catch (error) {
+    failure = step + " " + String(error.codeName || error.name).replace(/[^A-Za-z0-9_]/g, "");
+    if (attempt < maxAttempts) {
+      sleep(5000);
+    }
   }
 }
-{% endfor %}
 
+if (failure !== null) {
+  print("CONFIG0_ERROR: " + failure);
+  quit(1);
+}
 print("Replica set member update complete.");

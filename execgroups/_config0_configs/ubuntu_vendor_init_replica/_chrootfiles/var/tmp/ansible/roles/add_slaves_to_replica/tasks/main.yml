@@ -25,10 +25,19 @@
           - /tmp/replicaset_add_node.js
       register: add_node_result
       changed_when: "'Successfully added' in add_node_result.stdout"
-      retries: 3
-      delay: 5
-      until: add_node_result.rc == 0
+      # no_log hides the output, so the next task reports a failure with the
+      # script's sanitized CONFIG0_ERROR line only. The retry is in the
+      # script: an Ansible until loop marks the task failed when it runs out.
+      failed_when: false
       no_log: true
+
+    - name: Fail with the sanitized replica set member add error
+      ansible.builtin.fail:
+        msg: >-
+          {{ add_node_result.stdout_lines | select('match', '^CONFIG0_ERROR: ') | first
+          | default('CONFIG0_ERROR: add_members exited before the script reported') }}
+          (exit {{ add_node_result.rc }})
+      when: add_node_result.rc != 0
 
     - name: Display replica set member changes
       ansible.builtin.debug:
