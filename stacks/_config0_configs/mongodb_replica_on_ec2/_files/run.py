@@ -124,7 +124,7 @@ class Main(newSchedStack):
 
         self.parse.add_optional(key="publish_to_saas",
                                 types="bool",
-                                default="null")
+                                default=False)
 
         self.parse.add_optional(key="volume_size",
                                 types="int",
