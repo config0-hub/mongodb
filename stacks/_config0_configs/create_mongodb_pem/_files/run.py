@@ -40,8 +40,7 @@ def run(stackargs):
     inputargs = {
         "display": True,
         "human_description": 'Create mongodb.pem for MongoDB SSL',
-        "env_vars": json.dumps(env_vars),
-        "automation_phase": "infrastructure"
+        "env_vars": json.dumps(env_vars)
     }
 
     stack.create_keys.resource_exec(**inputargs)
