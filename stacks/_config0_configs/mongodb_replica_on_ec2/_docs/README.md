@@ -38,7 +38,7 @@ The caller supplies the `instance_profile_name`, `managed_tag_key`, and `managed
 | disksize | Root disk size in GB | 20 |
 | labels | Resource labels | null |
 | cloud_tags_hash | Resource tags for the cloud provider | null |
-| publish_to_saas | Publish values to the Config0 SaaS UI | null |
+| publish_to_saas | Publish settings and private IPs to the Config0 run page | true |
 | volume_size | Data volume size in GB | 100 |
 | volume_mountpoint | Data volume mount path | /var/lib/mongodb |
 | volume_fstype | Data volume filesystem | xfs |

@@ -26,7 +26,7 @@ This worker stack attaches and configures each MongoDB data volume, installs Mon
 | mongodb_port | MongoDB port | 27017 |
 | mongodb_bind_ip | MongoDB bind address | 0.0.0.0 |
 | mongodb_logpath | MongoDB log path | /var/log/mongodb/mongod.log |
-| publish_creds | Publish generated credentials | true |
+| publish_creds | Publish generated credentials only when requested | false |
 | publish_to_saas | Publish values to the Config0 SaaS UI | null |
 | volume_mountpoint | Data volume mount path | /var/lib/mongodb |
 | volume_fstype | Data volume filesystem | xfs |

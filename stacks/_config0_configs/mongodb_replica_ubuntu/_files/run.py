@@ -115,7 +115,7 @@ def run(stackargs):
     stack.parse.add_optional(key="mongodb_port", default="27017")
     stack.parse.add_optional(key="mongodb_bind_ip", default="0.0.0.0")
     stack.parse.add_optional(key="mongodb_logpath", default="/var/log/mongodb/mongod.log")
-    stack.parse.add_optional(key="publish_creds", default="true")
+    stack.parse.add_optional(key="publish_creds", types="bool", default=False)
     stack.parse.add_optional(key="publish_to_saas", default="null")
     stack.parse.add_optional(key="volume_mountpoint", default="/var/lib/mongodb")
     stack.parse.add_optional(key="volume_fstype", default="xfs")
