@@ -73,6 +73,29 @@ def _get_mongodb_hosts(stack):
     return mongodb_hosts_info, private_ips
 
 
+# The root login argument each key argument fills from the project's
+# resolved input variables.
+LOGIN_KEYS = {
+    "mongodb_username": "mongodb_username_key",
+    "mongodb_password": "mongodb_password_key",
+}
+
+
+def _set_login_from_inputvars(stack):
+    """Fill mongodb_username / mongodb_password from the project's input
+    variables when their key argument names a key of them; otherwise the
+    argument's own value stays (_random by default). The error never echoes
+    the key argument: a literal credential passed by mistake stays out of
+    the log."""
+    for login, key in LOGIN_KEYS.items():
+        if not stack.get_attr(key):
+            continue
+        value = stack.inputvars.get(stack.get_attr(key))
+        if not value:
+            raise ValueError(f"{key} names no key of the project's input variables")
+        stack.set_variable(login, value)
+
+
 def _mongodb_env_vars(stack, mongodb_pem, mongodb_keyfile, private_ips):
     return {
         "METHOD": "create",
@@ -110,6 +133,9 @@ def run(stackargs):
 
     stack.parse.add_optional(key="mongodb_username", default="_random")
     stack.parse.add_optional(key="mongodb_password", default="_random")
+    # each names a key of the project's input variables that holds the login
+    stack.parse.add_optional(key="mongodb_username_key", types="str", default=None)
+    stack.parse.add_optional(key="mongodb_password_key", types="str", default=None)
     stack.parse.add_optional(key="mongodb_data_dir", default="/var/lib/mongodb")
     stack.parse.add_optional(key="mongodb_storage_engine", default="wiredTiger")
     stack.parse.add_optional(key="mongodb_port", default="27017")
@@ -138,6 +164,8 @@ def run(stackargs):
     stack.init_variables()
     stack.init_hostgroups()
     stack.init_substacks()
+
+    _set_login_from_inputvars(stack)
 
     mongodb_pem = _get_mongodb_pem(stack)
     mongodb_keyfile = _get_mongodb_keyfile(stack)

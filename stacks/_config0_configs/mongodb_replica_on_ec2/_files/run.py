@@ -82,6 +82,18 @@ class Main(newSchedStack):
                                 tags="mongo_replica",
                                 default="_random")
 
+        # each names a key of the project's input variables that holds the
+        # login; mongodb_replica_ubuntu reads the value, so no order carries it
+        self.parse.add_optional(key="mongodb_username_key",
+                                types="str",
+                                tags="mongo_replica",
+                                default=None)
+
+        self.parse.add_optional(key="mongodb_password_key",
+                                types="str",
+                                tags="mongo_replica",
+                                default=None)
+
         self.parse.add_optional(key="config_network",
                                 choices=["private", "public"],
                                 types="str",

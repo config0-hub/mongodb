@@ -6,6 +6,8 @@ This stack deploys a MongoDB 8.0 replica set on EC2. It creates the PEM and keyf
 
 The caller supplies the `instance_profile_name`, `managed_tag_key`, and `managed_tag_value` promoted by the `ssm_ec2_exec_eventbridge_install` resource record. The EC2 stack records those values on every server so host orders can target the instance through SSM.
 
+The admin login is a random user name and password unless the user chooses it. To choose it, store it in an input-variable set, reference the set under this stack's `inputvars:` in `config0.yaml`, and name the set's keys in `mongodb_username_key` and `mongodb_password_key`. The install reads the values at run time and seals them as the secrets the host orders read. No order or run output carries them. A named key that the set does not have fails the install.
+
 ## Variables
 
 ### Required Variables
@@ -33,6 +35,8 @@ The caller supplies the `instance_profile_name`, `managed_tag_key`, and `managed
 | aws_default_region | Default AWS region | us-east-1 |
 | mongodb_username | MongoDB admin username | _random |
 | mongodb_password | MongoDB admin password | _random |
+| mongodb_username_key | Key of the project's input-variable set that holds the admin username; replaces `mongodb_username` | null |
+| mongodb_password_key | Key of the project's input-variable set that holds the admin password; replaces `mongodb_password` | null |
 | config_network | Configuration network (`private` or `public`) | private |
 | instance_type | EC2 instance type | t3.micro |
 | disksize | Root disk size in GB | 20 |

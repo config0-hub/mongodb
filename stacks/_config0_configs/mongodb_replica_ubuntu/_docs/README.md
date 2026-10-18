@@ -21,6 +21,8 @@ This worker stack attaches and configures each MongoDB data volume, installs Mon
 |------|-------------|---------|
 | mongodb_username | MongoDB admin username | _random |
 | mongodb_password | MongoDB admin password | _random |
+| mongodb_username_key | Key of the project's input-variable set that holds the admin username; replaces `mongodb_username` | null |
+| mongodb_password_key | Key of the project's input-variable set that holds the admin password; replaces `mongodb_password` | null |
 | mongodb_data_dir | MongoDB data directory | /var/lib/mongodb |
 | mongodb_storage_engine | MongoDB storage engine | wiredTiger |
 | mongodb_port | MongoDB port | 27017 |
